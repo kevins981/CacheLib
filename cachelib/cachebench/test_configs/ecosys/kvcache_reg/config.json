@@ -11,7 +11,7 @@
       "keySizeRangeProbability": [1.0], 
 
       "numKeys": 144634660, 
-      "numOps": 500000000, 
+      "numOps": 5000000, 
       "numThreads": 32, 
       "popDistFile": "pop.json", 
       "valSizeDistFile": "sizes.json",
