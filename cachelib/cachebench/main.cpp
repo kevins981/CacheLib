@@ -35,6 +35,8 @@
 #include <gflags/gflags.h>
 #endif
 
+#include <ittnotify.h>  // vtune pause and resume
+
 #ifdef CACHEBENCH_FB_ENV
 DEFINE_bool(export_to_ods, true, "Upload cachelib stats to ODS");
 DEFINE_int32(fb303_port,
@@ -113,6 +115,8 @@ bool checkArgsValidity() {
 }
 
 int main(int argc, char** argv) {
+  __itt_pause();
+  std::cout << "[INFO: VTUNE] Vtune analysis paused to exclude initialization and warmup phases." << std::endl;
   using namespace facebook::cachelib::cachebench;
 
 #ifdef CACHEBENCH_FB_ENV

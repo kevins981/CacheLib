@@ -32,11 +32,20 @@ add_library (cachelib_cachebench
   ./workload/WorkloadGenerator.cpp
   ./workload/PieceWiseReplayGenerator.cpp
   )
+
+add_library(vtune STATIC IMPORTED) # or STATIC instead of SHARED
+set_target_properties(vtune PROPERTIES
+  IMPORTED_LOCATION "/opt/intel/oneapi/vtune/2022.3.0/lib64/libittnotify.a"
+  INTERFACE_INCLUDE_DIRECTORIES "/opt/intel/oneapi/vtune/2022.3.0/include"
+)
+
 add_dependencies(cachelib_cachebench thrift_generated_files)
 target_link_libraries(cachelib_cachebench PUBLIC
   cachelib_datatype
   cachelib_allocator
   gflags
+  vtune "-L/lib/x86_64-linux-gnu"
+  dl
 )
 
 if ((CMAKE_SYSTEM_NAME STREQUAL Linux) AND

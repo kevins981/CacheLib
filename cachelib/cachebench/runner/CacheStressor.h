@@ -26,6 +26,7 @@
 #include <memory>
 #include <thread>
 #include <unordered_set>
+#include <ittnotify.h>  // vtune pause and resume
 
 #include "cachelib/cachebench/cache/Cache.h"
 #include "cachelib/cachebench/cache/TimeStampTicker.h"
@@ -137,8 +138,8 @@ class CacheStressor : public Stressor {
       std::vector<std::thread> workers;
       for (uint64_t i = 0; i < config_.numThreads; ++i) {
         workers.push_back(
-            std::thread([this, throughputStats = &throughputStats_.at(i)]() {
-              stressByDiscreteDistribution(*throughputStats);
+            std::thread([this, throughputStats = &throughputStats_.at(i), thread_num = i]() {
+              stressByDiscreteDistribution(*throughputStats, thread_num);
             }));
       }
       for (auto& worker : workers) {
@@ -244,7 +245,10 @@ class CacheStressor : public Stressor {
   // Throughput and Hit/Miss rates are tracked here as well
   //
   // @param stats       Throughput stats
-  void stressByDiscreteDistribution(ThroughputStats& stats) {
+  void stressByDiscreteDistribution(ThroughputStats& stats, int thread_num = -1) {
+    // thread_num is used to select one worker thread to perform vtune pause and resume,
+    // which pause and resume the entire program.
+    //std::cout << "[DEBUG] Worker thread number is " << thread_num << std::endl;
     std::mt19937_64 gen(folly::Random::rand64());
     std::discrete_distribution<> opPoolDist(config_.opPoolDistribution.begin(),
                                             config_.opPoolDistribution.end());
@@ -263,6 +267,13 @@ class CacheStressor : public Stressor {
       limitRate();
     };
 
+    bool vtune_running_warmup = false;
+    bool vtune_running_cleanup = false;
+    if (thread_num == 0){
+        std::cout << "[INFO: VTUNE] Vtune analysis will start after the first 1/8 of operations are completed and \
+            will be paused before the last 1/8 of ops." << std::endl;
+        std::cout << "[INFO: VTUNE] 1/8th of all operations (per thread) is " << config_.numOps/8 << std::endl;
+    }
     std::optional<uint64_t> lastRequestId = std::nullopt;
     for (uint64_t i = 0;
          i < config_.numOps &&
@@ -271,6 +282,19 @@ class CacheStressor : public Stressor {
              config_.maxInvalidDestructorCount &&
          !cache_->isNvmCacheDisabled() && !shouldTestStop();
          ++i) {
+        // start vtune profiling after 1/8th of the operations are performed.
+        // The hope is that after 1/8th of the request, the cache is warmed up.
+        // Only thread 0 will perform this.
+        if (thread_num == 0 && !vtune_running_warmup && i >= (config_.numOps/8)){
+             __itt_resume();
+             std::cout << "[INFO: VTUNE] Vtune analysis resumed." << std::endl;
+             vtune_running_warmup = true;
+        }
+        if (thread_num == 0 && !vtune_running_cleanup && i > (7*config_.numOps/8)){
+             __itt_pause();
+             std::cout << "[INFO: VTUNE] Vtune analysis paused to skip cleanup." << std::endl;
+             vtune_running_cleanup = true;
+        }
       try {
         // at the end of every operation, throttle per the config.
         SCOPE_EXIT { throttleFn(); };

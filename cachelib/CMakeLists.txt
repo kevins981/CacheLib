@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # https://cmake.org/examples/
 # CMakeLists files in this project can
 # refer to the root source directory of the project as ${HELLO_SOURCE_DIR} and
@@ -341,11 +340,19 @@ install(
 )
 
 add_library(cachelib INTERFACE)
+
+add_library(vtune STATIC IMPORTED) # or STATIC instead of SHARED
+set_target_properties(vtune PROPERTIES
+  IMPORTED_LOCATION "/opt/intel/oneapi/vtune/2022.3.0/lib64/libittnotify.a"
+  INTERFACE_INCLUDE_DIRECTORIES "/opt/intel/oneapi/vtune/2022.3.0/include"
+)
+
 target_link_libraries(cachelib INTERFACE
      cachelib_common
      cachelib_shm
      cachelib_navy
      cachelib_allocator
+     vtune "-L/lib/x86_64-linux-gnu" dl
      )
 target_include_directories(
   cachelib
