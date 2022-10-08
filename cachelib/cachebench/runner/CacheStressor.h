@@ -269,11 +269,16 @@ class CacheStressor : public Stressor {
 
     bool vtune_running_warmup = false;
     bool vtune_running_cleanup = false;
-    if (thread_num == 0){
-        std::cout << "[INFO: VTUNE] Vtune analysis will start after the first 1/8 of operations are completed and \
-            will be paused before the last 1/8 of ops." << std::endl;
-        std::cout << "[INFO: VTUNE] 1/8th of all operations (per thread) is " << config_.numOps/8 << std::endl;
-    }
+    Stats prevCacheStats;
+    Stats currCacheStats;
+    float currHitRatio = 100;
+    float prevHitRatio = -100;
+    uint64_t newMisses, newGets;
+    //if (thread_num == 0){
+    //    std::cout << "[INFO: VTUNE] Vtune analysis will start after the first 1/8 of operations are completed and \
+    //        will be paused before the last 1/8 of ops." << std::endl;
+    //    std::cout << "[INFO: VTUNE] 1/8th of all operations (per thread) is " << config_.numOps/8 << std::endl;
+    //}
     std::optional<uint64_t> lastRequestId = std::nullopt;
     for (uint64_t i = 0;
          i < config_.numOps &&
@@ -282,18 +287,31 @@ class CacheStressor : public Stressor {
              config_.maxInvalidDestructorCount &&
          !cache_->isNvmCacheDisabled() && !shouldTestStop();
          ++i) {
-        // start vtune profiling after 1/8th of the operations are performed.
-        // The hope is that after 1/8th of the request, the cache is warmed up.
+        // start vtune profiling after the difference between two consecutive 
+        // iterations is less than 0.5%.
         // Only thread 0 will perform this.
-        if (thread_num == 0 && !vtune_running_warmup && i >= (config_.numOps/8)){
-             __itt_resume();
-             std::cout << "[INFO: VTUNE] Vtune analysis resumed." << std::endl;
-             vtune_running_warmup = true;
-        }
-        if (thread_num == 0 && !vtune_running_cleanup && i > (7*config_.numOps/8)){
-             __itt_pause();
-             std::cout << "[INFO: VTUNE] Vtune analysis paused to skip cleanup." << std::endl;
-             vtune_running_cleanup = true;
+        if (i % 1048576 == 0) {
+            // only check this for every x ops
+            currCacheStats = this->getCacheStats();
+            newMisses = currCacheStats.numCacheGetMiss - prevCacheStats.numCacheGetMiss;
+            newGets = currCacheStats.numCacheGets -  prevCacheStats.numCacheGets;
+            currHitRatio = 100 - (newGets == 0
+                           ? 100.0
+                           : 100.0*static_cast<double>(newMisses)/static_cast<double>(newGets));
+            //std::cout << "[DEBUG: VTUNE] hit ratio is " << currHitRatio << ". diff is " << currHitRatio - prevHitRatio << std::endl;
+            
+            if (thread_num == 0 && !vtune_running_warmup && (currHitRatio - prevHitRatio < 0) && (currHitRatio - prevHitRatio > -0.5)){
+                 __itt_resume();
+                 std::cout << "[INFO: VTUNE] Vtune analysis resumed." << std::endl;
+                 vtune_running_warmup = true;
+            }
+            if (thread_num == 0 && !vtune_running_cleanup && i > (7*config_.numOps/8)){
+                 __itt_pause();
+                 std::cout << "[INFO: VTUNE] Vtune analysis paused to skip cleanup." << std::endl;
+                 vtune_running_cleanup = true;
+            }
+            prevCacheStats = currCacheStats;
+            prevHitRatio = currHitRatio ;
         }
       try {
         // at the end of every operation, throttle per the config.
