@@ -49,10 +49,12 @@ void ProgressTracker::work() {
 
   const auto currCacheStats = stressor_.getCacheStats();
   auto overallHitRatio = currCacheStats.getOverallHitRatio(prevStats_);
-  auto thStr = folly::sformat("{} {:>10.2f}M ops completed. Hit Ratio {:6.2f}%",
+  auto thStr = folly::sformat("{} {:>10.2f}M ops completed. Hit Ratio {:6.2f}%, items in DRAM {:,}, items in SSD {:,}",
                               buf,
                               mOpsPerSec,
-                              overallHitRatio);
+                              overallHitRatio,
+                              currCacheStats.numItems,
+                              currCacheStats.numNvmItems);
 
   // log this always to stdout
   std::cout << thStr << std::endl;
