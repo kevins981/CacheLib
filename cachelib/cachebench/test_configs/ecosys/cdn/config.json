@@ -1,6 +1,6 @@
 {
   "cache_config": {
-    "cacheSizeMB": 8192, 
+    "cacheSizeMB": 45000, 
     "poolRebalanceIntervalSec": 0
   }, 
   "test_config": 
@@ -20,7 +20,7 @@
       ], 
       "loneGetRatio": 0.008844707140632665, 
       "numKeys": 8935378, 
-      "numOps": 5000000, 
+      "numOps": 25000000, 
       "numThreads": 32, 
       "popDistFile": "pop.json", 
        
