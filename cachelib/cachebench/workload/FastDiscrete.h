@@ -103,6 +103,13 @@ class FastDiscreteDistribution final : public Distribution {
         double bucketPct = (bucketWeight_ - weightSeen) / probs[i];
         objectsSeen +=
             facebook::cachelib::util::narrow_cast<size_t>(bucketPct * sizes[i]);
+        // objectSeen is always >=1, so entries in buckets is always >= 1,
+        // meaning that entries in bucketOffsets_ is always increasing per entry.
+        // so when generating a distribution from this class, the prob. of selecting
+        // key 1 is only 1/2048, whereas in reality this should be higher.
+        // Although here my assumption is, the number returned by the () operator is 
+        // the index of the key that is selected. 
+        // Should check whether keyIndicesForPool_ indeed stores key indices
         objectsSeen = std::max(1UL, objectsSeen);
         sizes[i] -=
             facebook::cachelib::util::narrow_cast<size_t>(bucketPct * sizes[i]);
