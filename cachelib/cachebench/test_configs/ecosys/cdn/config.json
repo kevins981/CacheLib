@@ -19,10 +19,9 @@
         0.7
       ], 
       "loneGetRatio": 0.008844707140632665, 
-      "numKeys": 8935378, 
-      "numOps": 25000000, 
-      "numThreads": 32, 
-      "popDistFile": "pop.json", 
+      "numKeys": 1900000, 
+      "numOps": 350000000, 
+      "numThreads": 8, 
        
       "setRatio": 0.0, 
       "valSizeDistFile": "sizes.json"

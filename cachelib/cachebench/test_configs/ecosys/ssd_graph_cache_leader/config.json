@@ -1,8 +1,8 @@
 {
   "cache_config": {
-    "cacheSizeMB": 55000,
-    "navyReaderThreads": 12,
-    "navyWriterThreads": 12,
+    "cacheSizeMB": 45000,
+    "navyReaderThreads": 8,
+    "navyWriterThreads": 8,
     "nvmCachePaths": ["/ssd1/songxin8/thesis/cache/CacheLib/ssd"],
     "nvmCacheSizeMB": 100000,
     "navyBigHashBucketSize": 4096,
@@ -26,8 +26,8 @@
       0.5228545418419219,
       0.477145458158078
     ],
-    "numKeys": 4100000000,
-    "numOps": 200000000,
+    "numKeys": 4000000,
+    "numOps": 25000000,
     "numThreads": 8,
     "opPoolDistribution": [
       0.571,
@@ -46,7 +46,6 @@
           1.0
         ],
         "loneGetRatio": 0.2315436539873129,
-        "popDistFile": "fbobj_pop.json",
         "setRatio": 0.0,
         "valSizeDistFile": "fbobj_sizes.json"
       },
@@ -62,7 +61,6 @@
           1.0
         ],
         "loneGetRatio": 0.1158887280020357,
-        "popDistFile": "assoc_pop.json",
         "setRatio": 0.0,
         "valSizeDistFile": "assoc_sizes.json"
       }

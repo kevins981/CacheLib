@@ -1,6 +1,6 @@
 {
   "cache_config": {
-    "cacheSizeMB": 8192, 
+    "cacheSizeMB": 45000, 
     "poolRebalanceIntervalSec": 5
   }, 
   "test_config": 
@@ -10,16 +10,11 @@
       "keySizeRange": [16, 255], 
       "keySizeRangeProbability": [1.0], 
 
-      "numKeys": 144634660, 
-      "numOps": 5000000, 
-      "numThreads": 32, 
-      "popDistFile": "pop.json", 
+      "numKeys": 20000000, 
+      "numOps": 400000000, 
+      "numThreads": 8, 
       "valSizeDistFile": "sizes.json",
        
-
-      "opDelayNs" : 1000000,
-      "opDelayBatch": 25,
-
       "addChainedRatio": 0.0, 
       "setRatio": 0.0, 
       "delRatio": 0.0, 
