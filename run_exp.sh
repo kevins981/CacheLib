@@ -1,10 +1,10 @@
 #!/bin/bash
 
-RESULT_DIR="exp/sweep/"
+RESULT_DIR="exp/sweep_normal/"
 WORKING_DIR="/ssd1/songxin8/thesis/cache/CacheLib"
 CONFIG_DIR="${WORKING_DIR}/cachelib/cachebench/test_configs/ecosys/"
 
-declare -a CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg")
+declare -a CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg" "ssd_graph_cache_leader")
 
 clean_up () {
     echo "Cleaning up. Kernel PID is $EXE_PID, numastat PID is $LOG_PID."
@@ -16,7 +16,7 @@ clean_up () {
 
 clean_cache () { 
   echo "Clearing caches..."
-  # clean CPU caches
+  # clean CPU caches 
   ./tools/clear_cpu_cache
   # clean page cache
   echo 3 > /proc/sys/vm/drop_caches
@@ -38,7 +38,7 @@ run_gap () {
 
   echo "EXE PID is ${EXE_PID}"
   echo "start" > ${OUTFILE}_numastat 
-  while true; do numastat -p $EXE_PID >> ${OUTFILE}_numastat; sleep 2; done &
+  while true; do numastat -p $EXE_PID >> ${OUTFILE}_numastat; sleep 5; done &
   LOG_PID=$!
 
   echo "Waiting for cachelib workload to complete (PID is ${EXE_PID}). numastat is logged into ${OUTFILE}_numastat, PID is ${LOG_PID}" 
@@ -62,7 +62,7 @@ for config in "${CONFIG_LIST[@]}"
 do
   clean_cache
   run_gap "${RESULT_DIR}/${config}_allnode0" $config 0
-  #clean_cache
-  #run_gap "${RESULT_DIR}/allnode1" $config 1
+  clean_cache
+  run_gap "${RESULT_DIR}/${config}_allnode1" $config 1
 done
 
