@@ -95,6 +95,7 @@ class WorkloadDistribution {
           left, right, config_.popularityBuckets, config_.popularityWeights);
     } else {
       // TODO In general, could have different keyFrequency factor besides 2
+      std::cout << "[DEBUG] Using normal popularity distribution." << std::endl;
       double mu = (left + right) * 0.5;
       double sigma = (right - left) * .5 / 2;
       return std::make_unique<NormalDistribution>(mu, sigma, left, right);
