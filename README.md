@@ -41,6 +41,9 @@ Ubuntu 18.04, and Debian 10.
 ```sh
 git clone https://github.com/facebook/CacheLib
 cd CacheLib
+# RELEASE build with debug symbols
+./contrib/build.sh -j -v
+# DEBUG build
 ./contrib/build.sh -d -j -v
 
 # The resulting library and executables:
