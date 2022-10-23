@@ -27,7 +27,7 @@
       0.477145458158078
     ],
     "numKeys": 4000000,
-    "numOps": 25000000,
+    "numOps": 22000000,
     "numThreads": 8,
     "opPoolDistribution": [
       0.571,
