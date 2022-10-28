@@ -31,7 +31,12 @@ run_vtune () {
       -- /usr/bin/numactl --membind=${MEMNODE} --cpunodebind=0 \
       ./opt/cachelib/bin/cachebench --json_test_config $CONFIG_DIR/$config/config.json --progress=5
 
-  #LD_PRELOAD=/usr/lib/x86_64-linux-gnu/debug/libstdc++.so.6.0.28 /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect memory-consumption -knob mem-object-size-min-thres=1024 -data-limit=10000 -result-dir ${RESULT_DIR}/${config}_test_memconsump_node0 --app-working-dir=${WORKING_DIR} -- /usr/bin/numactl --membind=${MEMNODE} --cpunodebind=0 ./opt/cachelib/bin/cachebench --json_test_config $CONFIG_DIR/$config/config.json --progress=5
+  LD_PRELOAD=/usr/lib/x86_64-linux-gnu/debug/libstdc++.so.6.0.28 /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune \
+      -collect uarch-exploration -start-paused -knob sampling-interval=10 -knob collect-memory-bandwidth=true \
+      -data-limit=10000 \
+      -result-dir ${RESULT_DIR}/${config}_uarch_node${MEMNODE} --app-working-dir=${WORKING_DIR} \
+      -- /usr/bin/numactl --membind=${MEMNODE} --cpunodebind=0 \
+      ./opt/cachelib/bin/cachebench --json_test_config $CONFIG_DIR/$config/config.json --progress=5
 
 }
 
