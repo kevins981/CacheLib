@@ -343,8 +343,8 @@ add_library(cachelib INTERFACE)
 
 add_library(vtune STATIC IMPORTED) # or STATIC instead of SHARED
 set_target_properties(vtune PROPERTIES
-  IMPORTED_LOCATION "/opt/intel/oneapi/vtune/2022.3.0/lib64/libittnotify.a"
-  INTERFACE_INCLUDE_DIRECTORIES "/opt/intel/oneapi/vtune/2022.3.0/include"
+  IMPORTED_LOCATION "/opt/intel/oneapi/vtune/latest/lib64/libittnotify.a"
+  INTERFACE_INCLUDE_DIRECTORIES "/opt/intel/oneapi/vtune/latest/include"
 )
 
 target_link_libraries(cachelib INTERFACE
