@@ -1,0 +1,25 @@
+{
+  "cache_config": {
+    "cacheSizeMB": 200000, 
+    "poolRebalanceIntervalSec": 5
+  }, 
+  "test_config": 
+    {
+      "generator": "online", 
+      "enableLookaside": true, 
+      "keySizeRange": [16, 255], 
+      "keySizeRangeProbability": [1.0], 
+
+      "numKeys": 250000000, 
+      "numOps": 84000000, 
+      "numThreads": 32, 
+      "valSizeDistFile": "sizes.json",
+       
+      "addChainedRatio": 0.0, 
+      "setRatio": 0.0, 
+      "delRatio": 0.0, 
+      "getRatio": 0.9845283120275657, 
+      "loneGetRatio": 0.13471687972434254 
+    }
+ 
+}

@@ -1,0 +1,68 @@
+{
+  "cache_config": {
+    "cacheSizeMB": 200000,
+    "navyReaderThreads": 4,
+    "navyWriterThreads": 4,
+    "nvmCachePaths": ["/ssd1/songxin8/thesis/cache/CacheLib/ssd"], "nvmCacheSizeMB": 100000,
+    "navyBigHashBucketSize": 4096,
+    "navyBigHashSizePct": 65,
+    "navyBlockSize": 4096,
+    "navyParcelMemoryMB": 6048,
+    "enableChainedItem": true,
+    "htBucketPower": 26,
+    "moveOnSlabRelease": false,
+    "numPools": 2,
+    "poolRebalanceIntervalSec": 5,
+    "poolSizes": [
+      0.2,
+      0.8
+    ]
+  },
+  "test_config": {
+    "generator": "online",
+    "enableLookaside": true,
+    "keyPoolDistribution": [
+      0.5228545418419219,
+      0.477145458158078
+    ],
+    "numKeys": 80000000,
+    "numOps": 14400000,
+    "numThreads": 8,
+    "opPoolDistribution": [
+      0.571,
+      0.429
+    ],
+    "poolDistributions": [
+      {
+        "addChainedRatio": 0.0,
+        "delRatio": 0.0,
+        "getRatio": 0.7684563460126871,
+        "keySizeRange": [
+          8,
+          16
+        ],
+        "keySizeRangeProbability": [
+          1.0
+        ],
+        "loneGetRatio": 0.2315436539873129,
+        "setRatio": 0.0,
+        "valSizeDistFile": "fbobj_sizes.json"
+      },
+      {
+        "addChainedRatio": 0.0,
+        "delRatio": 0.0,
+        "getRatio": 0.8841112719979642,
+        "keySizeRange": [
+          8,
+          16
+        ],
+        "keySizeRangeProbability": [
+          1.0
+        ],
+        "loneGetRatio": 0.1158887280020357,
+        "setRatio": 0.0,
+        "valSizeDistFile": "assoc_sizes.json"
+      }
+    ]
+  }
+}
