@@ -1,12 +1,24 @@
 #!/bin/bash
 
+# import common functions
+if [ "$BIGMEMBENCH_COMMON_PATH" = "" ] ; then
+  echo "ERROR: bigmembench_common script not found. BIGMEMBENCH_COMMON_PATH is $BIGMEMBENCH_COMMON_PATH"
+  echo "Have you set BIGMEMBENCH_COMMON_PATH correctly? Are you using sudo -E instead of just sudo?"
+  exit 1
+fi
+source ${BIGMEMBENCH_COMMON_PATH}/run_exp_common.sh
+
 RESULT_DIR="exp/exp_damo/"
 WORKING_DIR="/ssd1/songxin8/thesis/cache/CacheLib"
-CONFIG_DIR="${WORKING_DIR}/cachelib/cachebench/test_configs/ecosys/"
+CONFIG_DIR="${WORKING_DIR}/cachelib/cachebench/test_configs/ecosys_medium/"
 
 DAMO_EXE="/ssd1/songxin8/anaconda3/envs/py36_damo/bin/damo"
+MEMCONFIG="kernelv6hHuangPatch_memmap482"
 
-declare -a CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg" "ssd_graph_cache_leader")
+
+#declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg" "ssd_graph_cache_leader")
+declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg")
+#declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs")
 
 clean_up () {
     echo "Cleaning up. Kernel PID is $EXE_PID"
@@ -15,22 +27,37 @@ clean_up () {
     exit
 }
 
-clean_cache () { 
-  echo "Clearing caches..."
-  # clean CPU caches 
-  ./tools/clear_cpu_cache
-  # clean page cache
-  echo 3 > /proc/sys/vm/drop_caches
-}
+run_damo () { 
+  OUTFILE_NAME=$1 
+  CACHE_CONFIG=$2
+  CONFIG=$3
+  OUTFILE_PATH="${RESULT_DIR}/${OUTFILE_NAME}"
 
-run_gap () { 
-  OUTFILE=$1 #first argument
-  CONFIG=$2
-  NODE=$3
-  echo "Start" > $OUTFILE
+  if [[ "$CONFIG" == "ALL_LOCAL" ]]; then
+    # All local config: place both data and compute on node 1
+    COMMAND_COMMON="/usr/bin/time -v /usr/bin/numactl --membind=1 --cpunodebind=1"
+  elif [[ "$CONFIG" == "EDGES_ON_REMOTE" ]]; then
+    # place edges array on node 1, rest on node 0
+    COMMAND_COMMON="/usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0"
+  elif [[ "$CONFIG" == "TPP" ]]; then
+    # only use node 0 CPUs and let TPP decide how memory is placed
+    COMMAND_COMMON="/usr/bin/time -v /usr/bin/numactl --cpunodebind=0"
+  elif [[ "$CONFIG" == "AUTONUMA" ]]; then
+    COMMAND_COMMON="/usr/bin/time -v /usr/bin/numactl --cpunodebind=0"
+  else
+    echo "Error! Undefined configuration $CONFIG"
+    exit 1
+  fi
+
+  echo "Start" > $OUTFILE_PATH
+
+  echo "NUMA hardware config is: " >> $OUTFILE_PATH
+  NUMACTL_OUT=$(numactl -H)
+  echo "$NUMACTL_OUT" >> $OUTFILE_PATH
+
   
-  /usr/bin/time -v /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
-    ./opt/cachelib/bin/cachebench --json_test_config $CONFIG_DIR/$config/config.json --progress=5  &>> $OUTFILE &
+  ${COMMAND_COMMON} ./opt/cachelib/bin/cachebench \
+      --json_test_config $CONFIG_DIR/$CACHE_CONFIG/config.json --progress=5  &>> $OUTFILE_PATH &
   # PID of time command
   TIME_PID=$! 
   # get PID of actual kernel, which is a child of time. 
@@ -40,15 +67,17 @@ run_gap () {
 
   # wait until the cache hits steady state
   # Dont have a mechanism to ensure we are at steady state. Just putting a safe number for now."
-  echo "sleeping for 2min to wait for steady state. "
-  sleep 120
+  echo "sleeping for 5min to wait for steady state. "
+  #sleep 500
+  sleep 5
 
   echo "Running damo."
-  ${DAMO_EXE} record $EXE_PID --out ${OUTFILE}_damo.data &
+  ${DAMO_EXE} record $EXE_PID --out ${OUTFILE_PATH}-damo.data &
   DAMO_PID=$!
 
-  echo "running DAMO for 10 minutes. DAMO data trace file is ${OUTFILE}_damo.data"
-  sleep 600
+  echo "running DAMO for 10 minutes. DAMO data trace file is ${OUTFILE_PATH}-damo.data"
+  #sleep 600
+  sleep 60
 
   kill $EXE_PID
   echo "DAMO measurement done."
@@ -60,14 +89,23 @@ run_gap () {
 ##############
 trap clean_up SIGHUP SIGINT SIGTERM
 
-[[ $EUID -ne 0 ]] && echo "This script must be run using sudo or as root." && exit 1
-
 mkdir -p $RESULT_DIR
 
-# All allocations on node 0
-for config in "${CONFIG_LIST[@]}"
+# AutoNUMA
+enable_autonuma
+for cache_config in "${CACHE_CONFIG_LIST[@]}"
 do
+  LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_autonuma")
   clean_cache
-  run_gap "${RESULT_DIR}/${config}_allnode0" $config 0
+  run_damo $LOGFILE_NAME $cache_config "AUTONUMA"
+done
+
+# All allocations on local node
+disable_numa
+for cache_config in "${CACHE_CONFIG_LIST[@]}"
+do
+  LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_allLocal")
+  clean_cache
+  run_damo $LOGFILE_NAME $cache_config "ALL_LOCAL"
 done
 
