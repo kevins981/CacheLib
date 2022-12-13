@@ -1,6 +1,7 @@
 {
   "cache_config": {
     "cacheSizeMB": 200000, 
+    "htBucketPower" : 24,
     "poolRebalanceIntervalSec": 0
   }, 
   "test_config": 
@@ -20,7 +21,7 @@
       ], 
       "loneGetRatio": 0.008844707140632665, 
       "numKeys": 8500000, 
-      "numOps": 187000000, 
+      "numOps": 250000000, 
       "numThreads": 32, 
        
       "setRatio": 0.0, 

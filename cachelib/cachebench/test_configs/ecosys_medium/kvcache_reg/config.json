@@ -1,6 +1,7 @@
 {
   "cache_config": {
     "cacheSizeMB": 200000, 
+    "htBucketPower" : 29,
     "poolRebalanceIntervalSec": 5
   }, 
   "test_config": 
@@ -11,7 +12,7 @@
       "keySizeRangeProbability": [1.0], 
 
       "numKeys": 250000000, 
-      "numOps": 84000000, 
+      "numOps": 450000000, 
       "numThreads": 32, 
       "valSizeDistFile": "sizes.json",
        
