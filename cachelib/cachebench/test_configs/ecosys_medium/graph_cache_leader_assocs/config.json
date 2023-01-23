@@ -1,11 +1,13 @@
 {
   "cache_config": {
     "cacheSizeMB": 200000, 
-    "htBucketPower" : 26,
+    "htBucketPower" : 28,
+    "htLockPower" : 20,
     "poolRebalanceIntervalSec": 0
   }, 
   "test_config": 
     {
+      "generator": "online",
       "addChainedRatio": 0.0, 
       "delRatio": 0.0, 
       "enableLookaside": true, 

@@ -6,6 +6,7 @@
   }, 
   "test_config": 
     {
+      "generator": "online",
       "addChainedRatio": 0.0, 
       "delRatio": 0.0, 
       "enableLookaside": true, 

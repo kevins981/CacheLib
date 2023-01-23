@@ -1,7 +1,8 @@
 {
   "cache_config": {
     "cacheSizeMB": 200000, 
-    "htBucketPower" : 29,
+    "htBucketPower" : 30,
+    "htLockPower" : 23,
     "poolRebalanceIntervalSec": 5
   }, 
   "test_config": 
