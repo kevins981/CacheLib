@@ -13,11 +13,11 @@ WORKING_DIR="/ssd1/songxin8/thesis/cache/CacheLib"
 CONFIG_DIR="${WORKING_DIR}/cachelib/cachebench/test_configs/ecosys_medium/"
 
 DAMO_EXE="/ssd1/songxin8/anaconda3/envs/py36_damo/bin/damo"
-MEMCONFIG="kernelv6hHuangPatch_memmap482"
+MEMCONFIG=""
 
 
 #declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg" "ssd_graph_cache_leader")
-declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg")
+declare -a CACHE_CONFIG_LIST=("cdn" "kvcache_reg")
 #declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs")
 
 clean_up () {
@@ -66,18 +66,16 @@ run_damo () {
   echo "EXE PID is ${EXE_PID}"
 
   # wait until the cache hits steady state
-  # Dont have a mechanism to ensure we are at steady state. Just putting a safe number for now."
-  echo "sleeping for 5min to wait for steady state. "
-  #sleep 500
-  sleep 5
+  # Dont have a mechanism to ensure we are at steady state. Just putting a safe number for now.
+  echo "sleeping for 60s to wait for steady state. "
+  sleep 60
 
   echo "Running damo."
   ${DAMO_EXE} record $EXE_PID --out ${OUTFILE_PATH}-damo.data &
   DAMO_PID=$!
 
   echo "running DAMO for 10 minutes. DAMO data trace file is ${OUTFILE_PATH}-damo.data"
-  #sleep 600
-  sleep 60
+  sleep 600
 
   kill $EXE_PID
   echo "DAMO measurement done."
@@ -91,17 +89,8 @@ trap clean_up SIGHUP SIGINT SIGTERM
 
 mkdir -p $RESULT_DIR
 
-# AutoNUMA
-enable_autonuma
-for cache_config in "${CACHE_CONFIG_LIST[@]}"
-do
-  LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_autonuma")
-  clean_cache
-  run_damo $LOGFILE_NAME $cache_config "AUTONUMA"
-done
-
 # All allocations on local node
-disable_numa
+enable_damo
 for cache_config in "${CACHE_CONFIG_LIST[@]}"
 do
   LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_allLocal")

@@ -8,17 +8,16 @@ if [ "$BIGMEMBENCH_COMMON_PATH" = "" ] ; then
 fi
 source ${BIGMEMBENCH_COMMON_PATH}/run_exp_common.sh
 
-RESULT_DIR="exp/exp_endToEnd/"
-#RESULT_DIR="exp/test/"
+RESULT_DIR="exp/exp_itemSizeTest/"
 WORKING_DIR="/ssd1/songxin8/thesis/cache/CacheLib"
-CONFIG_DIR="${WORKING_DIR}/cachelib/cachebench/test_configs/ecosys_medium/"
-#CONFIG_DIR="${WORKING_DIR}/cachelib/cachebench/test_configs/ecosys_small/"
+CONFIG_DIR="${WORKING_DIR}/cachelib/cachebench/test_configs/item_size_test/"
 
 MEMCONFIG=""
 
-#declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg" "ssd_graph_cache_leader")
-declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs" "cdn" "kvcache_reg")
-#declare -a CACHE_CONFIG_LIST=("graph_cache_leader_assocs")
+#declare -a CACHE_CONFIG_LIST=("2k" "4k" "3k" "5k")
+#declare -a CACHE_CONFIG_LIST=("8k" "12k" "6k" "10k")
+#declare -a CACHE_CONFIG_LIST=("128" "256" "512" "1k")
+declare -a CACHE_CONFIG_LIST=("64")
 
 clean_up () {
     echo "Cleaning up. Kernel PID is $EXE_PID, numastat PID is $NUMASTAT_PID."
@@ -69,6 +68,8 @@ run_app () {
   # This PID is needed for the numastat command
   EXE_PID=$(pgrep -P $TIME_PID)
 
+  # TODO: if the kernel command fails, we are still sleeping here
+
   echo "EXE PID is ${EXE_PID}"
   sleep 600 # wait for 10 minutes. Assume we reached steady state
   # run numastat ONCE. numastat has non-negligible performance overhead if ran too many times
@@ -89,14 +90,6 @@ trap clean_up SIGHUP SIGINT SIGTERM
 
 mkdir -p $RESULT_DIR
 
-# AutoNUMA
-enable_autonuma
-for cache_config in "${CACHE_CONFIG_LIST[@]}"
-do
-  clean_cache
-  LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_autonuma")
-  run_app $LOGFILE_NAME $cache_config "AUTONUMA"
-done
 
 # All allocations on local
 disable_numa
@@ -105,6 +98,15 @@ do
   clean_cache
   LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_allLocal")
   run_app $LOGFILE_NAME $cache_config "ALL_LOCAL"
+done
+
+# AutoNUMA
+enable_autonuma
+for cache_config in "${CACHE_CONFIG_LIST[@]}"
+do
+  clean_cache
+  LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_autonuma")
+  run_app $LOGFILE_NAME $cache_config "AUTONUMA"
 done
 
 ## TPP
@@ -116,11 +118,3 @@ done
 #  run_app $LOGFILE_NAME $cache_config "TPP"
 #done
 
-## Multi-clock
-#enable_multiclock
-#for cache_config in "${CACHE_CONFIG_LIST[@]}"
-#do
-#  clean_cache
-#  LOGFILE_NAME=$(gen_file_name "cachelib" "${cache_config}" "${MEMCONFIG}_multiclock")
-#  run_app $LOGFILE_NAME $cache_config "MULTICLOCK"
-#done

@@ -1,4 +1,5 @@
 {
+  // TODO: need to update. see medium workloads
   "cache_config": {
     "cacheSizeMB": 45000, 
     "poolRebalanceIntervalSec": 0
