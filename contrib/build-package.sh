@@ -174,7 +174,8 @@ case "$1" in
     REPODIR=cachelib/external/$NAME
     SRCDIR=$REPODIR/build/cmake
     external_git_clone=yes
-    external_git_branch=release
+    #external_git_branch=release
+    external_git_tag="v1.5.2"
     if test "$build_tests" = "yes" ; then
         cmake_custom_params="-DZSTD_BUILD_TESTS=ON"
     else
