@@ -98,6 +98,11 @@ class WorkloadDistribution {
       std::cout << "[DEBUG] Using normal popularity distribution." << std::endl;
       double mu = (left + right) * 0.5;
       double sigma = (right - left) * .5 / 2;
+      std::cout << std::dec << "[DEBUG] Using normal popularity distribution." << std::endl;
+      std::cout << "[DEBUG] Normal dist left = " << left << std::endl;
+      std::cout << "[DEBUG] Normal dist right = " << right << std::endl;
+      std::cout << "[DEBUG] Normal dist mean = " << mu << std::endl;
+      std::cout << "[DEBUG] Normal dist stddev = " << sigma << std::endl;
       return std::make_unique<NormalDistribution>(mu, sigma, left, right);
     }
   }

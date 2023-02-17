@@ -68,6 +68,7 @@ class CacheStressor : public Stressor {
     // if either consistency check is enabled or if we want to move
     // items during slab release, we want readers and writers of chained
     // allocs to be synchronized
+    //std::cout << "DEBUG: hardcode string is " << hardcodedString_ << std::endl;
     typename CacheT::ChainedItemMovingSync movingSync;
     if (config_.usesChainedItems() &&
         (cacheConfig.moveOnSlabRelease || config_.checkConsistency)) {
@@ -279,6 +280,10 @@ class CacheStressor : public Stressor {
     //        will be paused before the last 1/8 of ops." << std::endl;
     //    std::cout << "[INFO: VTUNE] 1/8th of all operations (per thread) is " << config_.numOps/8 << std::endl;
     //}
+    //char *tmpVal = new char[16777215]; // max allowed value size. Used to read the retrieved item.
+    std::string tmpVal;
+    tmpVal.resize(16777215);
+
     std::optional<uint64_t> lastRequestId = std::nullopt;
     for (uint64_t i = 0;
          i < config_.numOps &&
@@ -385,6 +390,10 @@ class CacheStressor : public Stressor {
             }
           } else {
             result = OpResultType::kGetHit;
+            // storing the retrieved key into a variable so that the content of the item is actually 
+            // accessed from memory. Otherwise only the pointer to the item is accessed.
+            //std::memcpy(tmpVal, it->getMemory(), it->getSize());
+            std::memcpy(&tmpVal[0], it->getMemory(), it->getSize());
           }
 
           break;
@@ -473,6 +482,9 @@ class CacheStressor : public Stressor {
       }
     }
     wg_->markFinish();
+    // reading tmp value here so hopefully the compiler does not optimize it out
+    //std::cout << folly::sformat("[DEBUG] Last read value is {}", tmpVal) << std::endl;
+    std::cout << "[DEBUG] Last read value is " <<  tmpVal.substr(0, 100) << std::endl; // printing the first 100 chars
   }
 
   // inserts key into the cache if the admission policy also indicates the

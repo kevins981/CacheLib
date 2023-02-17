@@ -16,6 +16,7 @@
 
 #pragma once
 #include <stdexcept>
+#include <iostream>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -43,6 +44,7 @@ ChainedHashTable::Impl<T, HookPtr>::Impl(size_t numBuckets,
   hashTable_ = std::make_unique<CompressedPtr[]>(numBuckets_);
   CompressedPtr* memStart = hashTable_.get();
   std::fill(memStart, memStart + numBuckets_, CompressedPtr{});
+  std::cout << std::hex << "[DEBUG] Hash table starting address " <<  memStart << std::endl;
 }
 
 template <typename T, typename ChainedHashTable::Hook<T> T::*HookPtr>
