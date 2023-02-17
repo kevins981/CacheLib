@@ -26,6 +26,7 @@
 #include <chrono>
 #include <memory>
 #include <stdexcept>
+#include <iostream>
 
 #include "cachelib/common/Utils.h"
 
@@ -123,6 +124,7 @@ SlabAllocator::SlabAllocator(void* memoryStart,
       nextSlabAllocation_(slabMemoryStart_),
       ownsMemory_(ownsMemory) {
   checkState();
+  std::cout << std::hex << "[DEBUG] Slab start " << memoryStart << ", end " << (void*)((char*)memoryStart + memorySize) << std::endl;
 
   static_assert(!(sizeof(Slab) & (sizeof(Slab) - 1)),
                 "slab size must be power of two");

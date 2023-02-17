@@ -69,6 +69,15 @@ class WorkloadGenerator : public GeneratorBase {
   std::vector<std::uniform_int_distribution<uint32_t>> keyGenForPool_;
 
   std::vector<WorkloadDistribution> workloadDist_;
+
+  // the number of accesses to each key. Uses same indices as reqs_ and keys_.
+  std::vector<uint64_t> keyAccessFreq_;
+  // whether we have already printed out the address of a particular key
+  std::vector<bool> hotKeyAccessed_;
+  
+  // if an item has > or = number of (generated) accesses than this number, 
+  // consider this item as hot.
+  uint32_t hotItemThresh = 100; 
 };
 } // namespace cachebench
 } // namespace cachelib

@@ -353,6 +353,7 @@ target_link_libraries(cachelib INTERFACE
      cachelib_navy
      cachelib_allocator
      vtune "-L/lib/x86_64-linux-gnu" dl
+     numa
      )
 target_include_directories(
   cachelib

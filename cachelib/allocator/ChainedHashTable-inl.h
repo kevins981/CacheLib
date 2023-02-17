@@ -23,6 +23,8 @@
 #include <folly/Range.h>
 #pragma GCC diagnostic pop
 
+#include <iostream>
+
 namespace facebook {
 namespace cachelib {
 
@@ -42,6 +44,8 @@ ChainedHashTable::Impl<T, HookPtr>::Impl(size_t numBuckets,
   }
   hashTable_ = std::make_unique<CompressedPtr[]>(numBuckets_);
   CompressedPtr* memStart = hashTable_.get();
+  std::cout << std::hex << "[DEBUG] kevin: hash table starting address " <<  memStart << std::endl;
+
   std::fill(memStart, memStart + numBuckets_, CompressedPtr{});
 }
 

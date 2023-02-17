@@ -27,6 +27,10 @@
 #include <thread>
 #include <unordered_set>
 #include <ittnotify.h>  // vtune pause and resume
+#include <numa.h> // manual numa placement
+#include <numaif.h>
+#include <stdint.h> // binary operators on pointer 
+
 
 #include "cachelib/cachebench/cache/Cache.h"
 #include "cachelib/cachebench/cache/TimeStampTicker.h"
@@ -280,6 +284,11 @@ class CacheStressor : public Stressor {
     //    std::cout << "[INFO: VTUNE] 1/8th of all operations (per thread) is " << config_.numOps/8 << std::endl;
     //}
     std::optional<uint64_t> lastRequestId = std::nullopt;
+    //std::string tmpKeyKevin = "null";
+    //folly::StringPiece tmpValKevin;
+    char *tmpValKevin = new char[16777215]; // max allowed value size
+    long pagesMigrated = 0;
+
     for (uint64_t i = 0;
          i < config_.numOps &&
          cache_->getInconsistencyCount() < config_.maxInconsistencyCount &&
@@ -333,10 +342,13 @@ class CacheStressor : public Stressor {
         const Request& req(getReq(pid, gen, lastRequestId));
         OpType op = req.getOp();
         const std::string* key = &(req.key);
+        bool loneGetReq = 0;
         std::string oneHitKey;
         if (op == OpType::kLoneGet || op == OpType::kLoneSet) {
           oneHitKey = Request::getUniqueKey();
           key = &oneHitKey;
+          // If one hit key, remove TTL since we use it to denote hot keys.
+          loneGetReq = 1;
         }
 
         OpResultType result(OpResultType::kNop);
@@ -380,11 +392,27 @@ class CacheStressor : public Stressor {
               // appropriate here)
               slock = {};
               xlock = chainedItemAcquireUniqueLock(*key);
-              setKey(pid, stats, key, *(req.sizeBegin), req.ttlSecs,
-                     req.admFeatureMap);
+              if (loneGetReq == 1) {  
+                // this request uses a lone get key. So do not print its address
+                setKey(pid, stats, key, *(req.sizeBegin), 0,
+                       req.admFeatureMap);
+              } else {
+                setKey(pid, stats, key, *(req.sizeBegin), req.ttlSecs,
+                       req.admFeatureMap, &pagesMigrated);
+              }
             }
           } else {
             result = OpResultType::kGetHit;
+            //std::cout << folly::sformat("{}", it->getKey()) << std::endl;
+
+            // storing the retrieved key into a variable so that the content of the item is actually 
+            // accessed from memory. Otherwise only the pointer to the item is accessed.
+            //tmpKeyKevin = it->getKey();
+            //std::cout << "key addr: " << std::hex << (void *)tmpKeyKevin << std::endl;
+            //std::cout << "value addr: " << std::hex << (void *)(it->getMemory()) << std::endl;
+            //tmpValKevin = folly::StringPiece{reinterpret_cast<const char*>(it->getMemory()), it->getSize()};
+            //std::cout << tmpValKevin << std::endl;
+            std::memcpy(tmpValKevin, it->getMemory(), it->getSize());
           }
 
           break;
@@ -406,7 +434,8 @@ class CacheStressor : public Stressor {
             ++stats.getMiss;
 
             ++stats.set;
-            it = cache_->allocate(pid, *key, *(req.sizeBegin), req.ttlSecs);
+            it = cache_->allocate(pid, *key, *(req.sizeBegin), 0); // TTL not used 
+            //it = cache_->allocate(pid, *key, *(req.sizeBegin), req.ttlSecs);
             if (!it) {
               ++stats.setFailure;
               break;
@@ -473,6 +502,10 @@ class CacheStressor : public Stressor {
       }
     }
     wg_->markFinish();
+    // reading tmpKey here so hopefully the compiler does not optimize it out
+    //std::cout << folly::sformat("Last read key is {}", tmpKeyKevin) << std::endl;
+    std::cout << "migrated " << pagesMigrated << " hot item pages to NUMA 0." << std::endl;
+    std::cout << folly::sformat("Last read value is {}", tmpValKevin) << std::endl;
   }
 
   // inserts key into the cache if the admission policy also indicates the
@@ -490,15 +523,54 @@ class CacheStressor : public Stressor {
       const std::string* key,
       size_t size,
       uint32_t ttlSecs,
-      const std::unordered_map<std::string, std::string>& featureMap) {
+      const std::unordered_map<std::string, std::string>& featureMap,
+      long* pagesMigrated = NULL) {
     // check the admission policy first, and skip the set operation
     // if the policy returns false
     if (config_.admPolicy && !config_.admPolicy->accept(featureMap)) {
       return OpResultType::kSetSkip;
     }
 
+    char** migrate_pages = new char*[1];  // array of pointer, with only 1 element
+    int migrate_nodes[1] = {0}; // migrate to node 0
+    int migrate_status[1] = {99};
+
     ++stats.set;
-    auto it = cache_->allocate(pid, *key, size, ttlSecs);
+    //auto it = cache_->allocate(pid, *key, size, ttlSecs);
+    auto it = cache_->allocate(pid, *key, size, 0); // ttlSec is always 0 for our workloads
+    if (ttlSecs == 12345) {
+      // this key is hot. Print out its address.
+      char* hotItemAddr = (char*)(it->getMemory());
+      std::cout << "key " << *key << " is hot. address is " << std::hex << (void*)hotItemAddr <<  std::endl;
+      //// manual placement: place this hot key in fast tier memory (node 0).
+      //// since the item can span multiple pages (I am assuming at most 2 pages here), migrate the page
+      //// the contains the larger portion of the item. 
+      ////  |   pg1  | pg2   |     # page boundaries
+      ////       |       |         # item boundaries
+      //// if (item start addr - page start address) > pagesize/2: migrate pg2
+      //// else migrate pg1
+      //char* pg1StartAddr = (char*)(((uintptr_t)hotItemAddr >> (uintptr_t)12) << (uintptr_t)12); // clear lower 12 bits
+      //long ret;
+      //if ((hotItemAddr - pg1StartAddr) > 4096/2) {
+      //  // the majority of the item falls into page 2, so migrate page 2
+      //  migrate_pages[0] = (char*)pg1StartAddr + 0x1000; // page 2 address
+      //} else {
+      //  // the majority of the item falls into page 1
+      //  migrate_pages[0] = (char*)pg1StartAddr;
+      //}
+      //ret = numa_move_pages(0, 1, (void **)migrate_pages, migrate_nodes, migrate_status, MPOL_MF_MOVE_ALL);
+      //if (ret) {
+      //  std::cout << "ERROR: page migrating page " << (void*)(migrate_pages[0]) << " failed with code " << strerror(errno) << std::endl;
+      //} else {
+      //  //std::cout << "migrating page " << (void*)(migrate_pages[0]) << " success." << std::endl;
+      //  if (pagesMigrated) { pagesMigrated++; }
+      //}
+
+      //std::cout << folly::sformat("hot key {}, address {p}", key, it->getMemory()) << std::endl;
+      //std::cout << folly::sformat("hot key received {s}",  *key) << std::endl;
+      //std::cout << "[DEBUG] hot key received " << static_cast<const std::string>(*key) << ". address " << std::hex << it->getMemory() <<  std::endl;
+      //std::cout << "[DEBUG] hot key received " << *key << ". address " << std::hex << it->getMemory() <<  std::endl;
+    }
     if (it == nullptr) {
       ++stats.setFailure;
       return OpResultType::kSetFailure;

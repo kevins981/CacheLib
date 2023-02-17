@@ -51,6 +51,18 @@ const Request& WorkloadGenerator::getReq(uint8_t poolId,
   XDCHECK_LT(poolId, keyGenForPool_.size());
 
   size_t idx = keyIndicesForPool_[poolId][keyGenForPool_[poolId](gen)];
+  if (hotKeyAccessed_[idx] == 1) {
+    //std::cout << folly::sformat("already seen this key, index is {}. ttl is {}", idx, reqs_[idx].ttlSecs) << std::endl;
+    reqs_[idx].ttlSecs = 0; // set TTL back to 0 so we dont print its address again.
+  }
+  // check if this key is one of the hot keys
+  if (keyAccessFreq_[idx] > hotItemThresh && hotKeyAccessed_[idx] == 0) {
+    // this hot key's address has not been printed 
+    //std::cout << folly::sformat("[DEBUG] hot key found. Index is {}, key is {} or {}", idx, keys_[idx], reqs_[idx].key) << std::endl;
+    reqs_[idx].ttlSecs = 12345; // using TTL as indication that this key is hot
+    hotKeyAccessed_[idx] = 1; // record that we have already seen this key once
+  } 
+  
   auto op =
       static_cast<OpType>(workloadDist_[workloadIdx(poolId)].sampleOpDist(gen));
   reqs_[idx].setOp(op);
@@ -101,6 +113,10 @@ void WorkloadGenerator::generateKeys() {
   }
   auto sortDuration = std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::steady_clock::now() - startTime);
+
+  // initialize all elements to 0
+  keyAccessFreq_.resize(config_.numKeys, 0);
+  hotKeyAccessed_.resize(config_.numKeys, 0);
 
   std::cout << folly::sformat("Created {:,} keys in {:.2f} mins",
                               totalKeys,
@@ -176,11 +192,36 @@ void WorkloadGenerator::generateKeyDistributions() {
           }
         },
         config_.numThreads, numOpsForPool);
-  }
 
+    // scan keyIndicesForPool_ and record the # of accesses of each key.
+    // assuming only one pool.
+    for (uint64_t j = 0; j < numOpsForPool; j++) {
+      int keyIndex = keyIndicesForPool_[0][j];
+      (keyAccessFreq_[keyIndex])++;
+    }
+
+    long numHotItems = 0;
+    // figure out how many keys are considered hot.
+    for (uint64_t j = 0; j < config_.numKeys; j++) {
+      if (keyAccessFreq_[j] >= hotItemThresh) {
+        numHotItems++;
+      }
+    }
+    std::cout << folly::sformat("[DEBUG] {} items are hot, having >= {} accesses generated.", numHotItems, hotItemThresh) << std::endl;
+  }
+  
   std::cout << folly::sformat("Generated access patterns in {:.2f} mins",
                               duration.count() / 60.)
             << std::endl;
+
+  //std::cout << folly::sformat("scanning the accesses generated.") << std::endl;
+  //std::cout << folly::sformat("keyindex, key, #accesses") << std::endl;
+  //for (int i=0; i < keyAccessFreq_.size(); i++) {
+  //    //std::cout << folly::sformat("index {}, key {}, frequency {} ", i, keys_[i], keyAccessFreq_[i]) << std::endl;
+  //    std::cout << folly::sformat("{},{},{} ", i, keys_[i], keyAccessFreq_[i]) << std::endl;
+  //}
+
+  
 }
 
 } // namespace cachebench

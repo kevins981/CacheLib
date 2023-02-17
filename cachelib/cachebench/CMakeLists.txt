@@ -46,6 +46,7 @@ target_link_libraries(cachelib_cachebench PUBLIC
   gflags
   vtune "-L/lib/x86_64-linux-gnu"
   dl
+  numa
 )
 
 if ((CMAKE_SYSTEM_NAME STREQUAL Linux) AND
