@@ -250,7 +250,8 @@ class CacheStressor : public Stressor {
     // thread_num is used to select one worker thread to perform vtune pause and resume,
     // which pause and resume the entire program.
     //std::cout << "[DEBUG] Worker thread number is " << thread_num << std::endl;
-    std::mt19937_64 gen(folly::Random::rand64());
+    //std::mt19937_64 gen(folly::Random::rand64());
+    std::mt19937_64 gen(0xdeadbeef);
     std::discrete_distribution<> opPoolDist(config_.opPoolDistribution.begin(),
                                             config_.opPoolDistribution.end());
     const uint64_t opDelayBatch = config_.opDelayBatch;

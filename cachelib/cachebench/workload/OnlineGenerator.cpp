@@ -67,7 +67,8 @@ const Request& OnlineGenerator::getReq(uint8_t poolId,
 }
 
 void OnlineGenerator::generateKeyLengths() {
-  std::mt19937_64 gen(folly::Random::rand64());
+  //std::mt19937_64 gen(folly::Random::rand64());
+  std::mt19937_64 gen(0xdeadbeef);
   for (size_t i = 0; i < config_.keyPoolDistribution.size(); i++) {
     keyLengths_.emplace_back();
     for (size_t j = 0; j < kNumUniqueKeyLengths; j++) {
@@ -104,7 +105,8 @@ OnlineGenerator::generateSize(uint8_t pid, size_t idx) {
 }
 
 void OnlineGenerator::generateSizes() {
-  std::mt19937_64 gen(folly::Random::rand64());
+  //std::mt19937_64 gen(folly::Random::rand64());
+  std::mt19937_64 gen(0xdeadbeef);
   // populate this per pool if there is a pool specific workload distribution.
   for (size_t i = 0; i < config_.keyPoolDistribution.size(); i++) {
     sizes_.emplace_back();

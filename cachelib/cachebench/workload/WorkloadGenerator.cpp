@@ -62,7 +62,8 @@ void WorkloadGenerator::generateKeys() {
   auto fn = [pid, this](size_t start, size_t end) {
     // All keys are printable lower case english alphabet.
     std::uniform_int_distribution<char> charDis('a', 'z');
-    std::mt19937_64 gen(folly::Random::rand64());
+    //std::mt19937_64 gen(folly::Random::rand64());
+    std::mt19937_64 gen(0xdeadbeef);
     for (uint64_t i = start; i < end; i++) {
       size_t keySize =
           util::narrow_cast<size_t>(workloadDist_[pid].sampleKeySizeDist(gen));
@@ -111,7 +112,8 @@ void WorkloadGenerator::generateKeys() {
 void WorkloadGenerator::generateReqs() {
   generateFirstKeyIndexForPool();
   generateKeys();
-  std::mt19937_64 gen(folly::Random::rand64());
+  //std::mt19937_64 gen(folly::Random::rand64());
+  std::mt19937_64 gen(0xdeadbeef);
   for (size_t i = 0; i < config_.keyPoolDistribution.size(); i++) {
     size_t idx = workloadIdx(i);
     for (size_t j = firstKeyIndexForPool_[i]; j < firstKeyIndexForPool_[i + 1];
@@ -168,7 +170,8 @@ void WorkloadGenerator::generateKeyDistributions() {
 
     duration += detail::executeParallel(
         [&, this](size_t start, size_t end) {
-          std::mt19937_64 gen(folly::Random::rand64());
+          //std::mt19937_64 gen(folly::Random::rand64());
+          std::mt19937_64 gen(0xdeadbeef);
           auto popDist = workloadDist_[idx].getPopDist(left, right);
           for (uint64_t j = start; j < end; j++) {
             keyIndicesForPool_[i][j] =
