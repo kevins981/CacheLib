@@ -39,9 +39,13 @@
 
 namespace facebook {
 namespace cachelib {
+uint64_t numHashTableCollision = 0;
 namespace cachebench {
 
 constexpr uint32_t kNvmCacheWarmUpCheckRate = 1000;
+std::string tmpVals[64]; // used for reading out cache hit results
+
+//folly::StringPiece tmpVals[64]; // used for reading out cache hit results
 
 // Implementation of stressor that uses a workload generator to stress an
 // instance of the cache.  All item's value in CacheStressor follows CacheValue
@@ -53,6 +57,7 @@ class CacheStressor : public Stressor {
   using CacheT = Cache<Allocator>;
   using Key = typename CacheT::Key;
   using WriteHandle = typename CacheT::WriteHandle;
+  using ReadHandle = typename CacheT::ReadHandle;
 
   // @param cacheConfig   the config to instantiate the cache instance
   // @param config        stress test config
@@ -282,8 +287,8 @@ class CacheStressor : public Stressor {
     //    std::cout << "[INFO: VTUNE] 1/8th of all operations (per thread) is " << config_.numOps/8 << std::endl;
     //}
     //char *tmpVal = new char[16777215]; // max allowed value size. Used to read the retrieved item.
-    std::string tmpVal;
-    tmpVal.resize(16777215);
+    //std::string tmpVal;
+    //tmpVal.resize(16777215);
 
     std::optional<uint64_t> lastRequestId = std::nullopt;
     for (uint64_t i = 0;
@@ -394,7 +399,9 @@ class CacheStressor : public Stressor {
             // storing the retrieved key into a variable so that the content of the item is actually 
             // accessed from memory. Otherwise only the pointer to the item is accessed.
             //std::memcpy(tmpVal, it->getMemory(), it->getSize());
-            std::memcpy(&tmpVal[0], it->getMemory(), it->getSize());
+            //std::memcpy(&tmpVal[0], it->getMemory(), it->getSize());
+            //readValue(tmpVal, it);
+            readValue(it, thread_num);
           }
 
           break;
@@ -485,8 +492,23 @@ class CacheStressor : public Stressor {
     wg_->markFinish();
     // reading tmp value here so hopefully the compiler does not optimize it out
     //std::cout << folly::sformat("[DEBUG] Last read value is {}", tmpVal) << std::endl;
-    std::cout << "[DEBUG] Last read value is " <<  tmpVal.substr(0, 100) << std::endl; // printing the first 100 chars
+    //std::cout << "[DEBUG] Last read value is " <<  tmpVal.substr(0, 100) << std::endl; // printing the first 100 chars
+    std::cout << "[DEBUG] Last read value is " <<  tmpVals[thread_num].substr(0, 100) << std::endl; // printing the first 100 chars
   }
+
+  void readValue(ReadHandle &it, int thread_num) {
+    //std::memcpy(&tmpVal[0], it->getMemory(), it->getSize());
+    //XCHECK_LE(thread_num, 63);
+    //XCHECK_GE(thread_num, 0);
+    //folly::StringPiece sp{reinterpret_cast<const char*>(it->getMemory()), it->getSize()};
+    std::string sp (reinterpret_cast<const char*>(it->getMemory()), it->getSize());
+    //std::cout << "[DEBUG] Value size is " << it->getSize()  << std::endl; // printing the first 100 chars
+    tmpVals[thread_num] = sp;
+  }
+
+  //folly::StringPiece sp{reinterpret_cast<const char*>(item->getMemory()),
+  //                        item->getSize()};
+  //  std::ignore = sp;
 
   // inserts key into the cache if the admission policy also indicates the
   // key is worthy to be cached.
