@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <iostream>
+
 namespace facebook {
 namespace cachelib {
 
@@ -256,6 +258,7 @@ std::unique_ptr<typename CacheAllocator<CacheTrait>::AccessContainer>
 CacheAllocator<CacheTrait>::initAccessContainer(InitMemType type,
                                                 const std::string name,
                                                 AccessConfig config) {
+  std::cout << "[DEBUG] Allocating hash table: " << name << std::endl;
   if (type == InitMemType::kNone) {
     return std::make_unique<AccessContainer>(
         config, compressor_,

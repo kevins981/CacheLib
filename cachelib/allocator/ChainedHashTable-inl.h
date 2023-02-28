@@ -27,6 +27,8 @@
 namespace facebook {
 namespace cachelib {
 
+extern uint64_t numHashTableCollision;
+
 template <typename T, typename ChainedHashTable::Hook<T> T::*HookPtr>
 ChainedHashTable::Impl<T, HookPtr>::Impl(size_t numBuckets,
                                          const PtrCompressor& compressor,
@@ -45,6 +47,7 @@ ChainedHashTable::Impl<T, HookPtr>::Impl(size_t numBuckets,
   CompressedPtr* memStart = hashTable_.get();
   std::fill(memStart, memStart + numBuckets_, CompressedPtr{});
   std::cout << std::hex << "[DEBUG] Hash table starting address " <<  memStart << std::endl;
+  std::cout << std::hex << "[DEBUG] Hash table ending address " << &(memStart[numBuckets_-1]) << std::endl;
 }
 
 template <typename T, typename ChainedHashTable::Hook<T> T::*HookPtr>
@@ -155,12 +158,17 @@ void ChainedHashTable::Impl<T, HookPtr>::removeFromBucket(
   }
 }
 
+//uint64_t numHashTableCollision = 0;
 template <typename T, typename ChainedHashTable::Hook<T> T::*HookPtr>
 T* ChainedHashTable::Impl<T, HookPtr>::findInBucket(
     Key key, BucketId bucket) const noexcept {
   XDCHECK_LT(bucket, numBuckets_);
   T* curr = compressor_.unCompress(hashTable_[bucket]);
   while (curr != nullptr && curr->getKey() != key) {
+    //numHashTableCollision++;
+    //if (numHashTableCollision % 100000 == 0) {
+    //  std::cout << std::dec << "[DEBUG] Hash table collisions: " << numHashTableCollision << std::endl;
+    //}
     curr = getHashNext(*curr);
   }
   return curr;

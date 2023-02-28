@@ -26,6 +26,7 @@
 #include <memory>
 #include <mutex>
 #include <system_error>
+#include <iostream>
 
 #include "cachelib/common/Hash.h"
 
@@ -273,7 +274,12 @@ class BaseBucketLocks {
   BaseBucketLocks(uint32_t locksPower, std::shared_ptr<Hash> hasher)
       : locksMask_((1ULL << locksPower) - 1),
         locks_((1ULL << locksPower)),
-        hasher_(std::move(hasher)) {}
+        hasher_(std::move(hasher)) {
+    std::cout << std::dec << "[DEBUG] Locks power = " << locksPower << std::endl;
+    std::cout << std::hex << "[DEBUG] Locks vector starting address: " << &(locks_[0]) << std::endl;
+    std::cout << std::hex << "[DEBUG] Locks vector ending address: " << &(locks_[locks_.size()-1]) << std::endl;
+    std::cout << std::dec;
+  }
 
   // Check whether two keys are mapped to the same lock
   // This can only support key type that has only one argument,
