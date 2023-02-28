@@ -2,8 +2,8 @@
  * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * you may not use this file except in compliance with the License.  
+ * You may obtain a copy of the License at 
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -34,6 +34,9 @@
 #include <folly/init/Init.h>
 #include <gflags/gflags.h>
 #endif
+
+#include <pthread.h>
+#include "./w-tinylfu/perf_test/perf_lfu.cpp"
 
 #ifdef CACHEBENCH_FB_ENV
 DEFINE_bool(export_to_ods, true, "Upload cachelib stats to ODS");
@@ -113,6 +116,15 @@ bool checkArgsValidity() {
 }
 
 int main(int argc, char** argv) {
+  // start perf monitornig thread
+  //pthread_t perf_thread;
+  //int r = pthread_create(&perf_thread, NULL, perf_func, NULL);
+  //if (r != 0) {
+  //  std::cout << "pthread create failed." << std::endl;
+  //  exit(1);
+  //}
+  //std::cout << "perf thread created." << std::endl;
+
   using namespace facebook::cachelib::cachebench;
 
 #ifdef CACHEBENCH_FB_ENV
