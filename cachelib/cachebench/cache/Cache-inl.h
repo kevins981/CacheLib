@@ -638,6 +638,16 @@ Stats Cache<Allocator>::getStats() const {
   ret.evictionAttemptsForSlabRelease = rebalanceStats.numEvictionAttempts;
   ret.evictionSuccessesForSlabRelease = rebalanceStats.numEvictionSuccesses;
 
+  // reaper stats
+  ret.numVisitedItems     = cacheStats.reaperStats.numVisitedItems;
+  ret.numReapedItems      = cacheStats.reaperStats.numReapedItems;
+  ret.numVisitErrs        = cacheStats.reaperStats.numVisitErrs;
+  ret.numTraversals       = cacheStats.reaperStats.numTraversals;
+  ret.lastTraversalTimeMs = cacheStats.reaperStats.lastTraversalTimeMs;
+  ret.minTraversalTimeMs  = cacheStats.reaperStats.minTraversalTimeMs;
+  ret.maxTraversalTimeMs  = cacheStats.reaperStats.maxTraversalTimeMs;
+  ret.avgTraversalTimeMs  = cacheStats.reaperStats.avgTraversalTimeMs;
+
   ret.inconsistencyCount = getInconsistencyCount();
   ret.isNvmCacheDisabled = isNvmCacheDisabled();
   ret.invalidDestructorCount = invalidDestructor_;

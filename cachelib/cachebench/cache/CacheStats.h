@@ -107,6 +107,16 @@ struct Stats {
   // errors from the nvm engine.
   std::unordered_map<std::string, double> nvmErrors;
 
+  // reaper stats
+  uint64_t numVisitedItems{0};
+  uint64_t numReapedItems{0};
+  uint64_t numVisitErrs{0};
+  uint64_t numTraversals{0};
+  uint64_t lastTraversalTimeMs{0};
+  uint64_t minTraversalTimeMs{0};
+  uint64_t maxTraversalTimeMs{0};
+  uint64_t avgTraversalTimeMs{0};
+
   void render(std::ostream& out) const {
     auto totalMisses = getTotalMisses();
     const double overallHitRatio = invertPctFn(totalMisses, numCacheGets);
@@ -129,6 +139,17 @@ struct Stats {
                             poolUsageFraction[pid])
           << std::endl;
     }
+
+    out << "============ Reaper stats" << std::endl;
+    out << folly::sformat("numVisitedItems     : {:,}", numVisitedItems    ) << std::endl;
+    out << folly::sformat("numReapedItems      : {:,}", numReapedItems     ) << std::endl;
+    out << folly::sformat("numVisitErrs        : {:,}", numVisitErrs       ) << std::endl;
+    out << folly::sformat("numTraversals       : {:,}", numTraversals      ) << std::endl;
+    out << folly::sformat("lastTraversalTimeMs : {:,}", lastTraversalTimeMs) << std::endl;
+    out << folly::sformat("minTraversalTimeMs  : {:,}", minTraversalTimeMs ) << std::endl;
+    out << folly::sformat("maxTraversalTimeMs  : {:,}", maxTraversalTimeMs ) << std::endl;
+    out << folly::sformat("avgTraversalTimeMs  : {:,}", avgTraversalTimeMs ) << std::endl;
+    out << "============ Reaper stats end" << std::endl;
 
     if (numCacheGets > 0) {
       out << folly::sformat("Cache Gets    : {:,}", numCacheGets) << std::endl;
