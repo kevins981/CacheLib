@@ -19,6 +19,7 @@
 #include <folly/Benchmark.h>
 
 #include <atomic>
+#include <iostream>
 
 #include "cachelib/cachebench/util/Request.h"
 
@@ -39,6 +40,11 @@ class GeneratorBase {
   virtual const Request& getReq(uint8_t /*poolId*/,
                                 std::mt19937_64& /*gen*/,
                                 std::optional<uint64_t> /*lastRequestId*/) = 0;
+
+  virtual void getHotKeys(std::vector<std::string> /*hotKeyStrings*/) {
+    // not implemented by default
+    std::cout << "[DEBUG] getHotKeys not implemented in GeneratorBase." << std::endl;
+  }
 
   // Notify the workload generator about the result of the request.
   // Note the workload generator may release the memory for the request.

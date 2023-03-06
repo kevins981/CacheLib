@@ -51,6 +51,26 @@ OnlineGenerator::OnlineGenerator(const StressorConfig& config)
   generateKeyWorkloadDistributions();
 }
 
+void OnlineGenerator::getHotKeys(std::vector<std::string> &hotKeyStrings) {
+  // stop the world: print the starting and ending addresses of the top N hottest items.
+  uint64_t mean = 20000000;
+  uint64_t stddev = 500000;
+  //uint64_t mean = 1000000;
+  //uint64_t stddev = 25000;
+  std::cout << "[DEBUG]:     mean: " << mean << " stddev: " << stddev << std::endl;
+
+  std::string keyString;
+  // top 2*stddev hottest items have key indices between (mean - stddev) and (mean + stddev).
+  //for (uint64_t hotKeyIdx = mean-stddev; hotKeyIdx <= mean+stddev; hotKeyIdx++) {
+  //for (uint64_t hotKeyIdx = mean-25000; hotKeyIdx <= mean+25000; hotKeyIdx++) {
+  for (uint64_t hotKeyIdx = mean-800000; hotKeyIdx <= mean+800000; hotKeyIdx++) {
+    generateKey(0, hotKeyIdx, keyString);
+    hotKeyStrings.push_back(keyString);
+    //std::cout << "[DEBUG]: key string: " << keyString << std::endl;
+    //hotKeyStrings.push_back(std::to_string(hotKeyIdx));
+  }
+}
+
 const Request& OnlineGenerator::getReq(uint8_t poolId,
                                        std::mt19937_64& gen,
                                        std::optional<uint64_t>) {
@@ -88,6 +108,8 @@ void OnlineGenerator::generateKey(uint8_t pid, size_t idx, std::string& key) {
   const auto keySize = keyLengths_[pid][idx % keyLengths_[pid].size()];
   XDCHECK_GE(keySize, sizeof(idx));
   key.resize(keySize);
+
+  //key = std::to_string(idx);
 
   // write the idx into the key and pad any additional bytes with same bytes.
   auto* idxChars = reinterpret_cast<char*>(&idx);

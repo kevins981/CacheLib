@@ -27,6 +27,9 @@
 #include <thread>
 #include <unordered_set>
 #include <ittnotify.h>  // vtune pause and resume
+#include <fstream>
+#include <numa.h> // manual hot item placement
+#include <numaif.h>
 
 #include "cachelib/cachebench/cache/Cache.h"
 #include "cachelib/cachebench/cache/TimeStampTicker.h"
@@ -36,6 +39,7 @@
 #include "cachelib/cachebench/util/Parallel.h"
 #include "cachelib/cachebench/util/Request.h"
 #include "cachelib/cachebench/workload/GeneratorBase.h"
+#include "cachelib/cachebench/workload/OnlineGenerator.h"
 
 namespace facebook {
 namespace cachelib {
@@ -341,7 +345,7 @@ class CacheStressor : public Stressor {
         ++stats.ops;
 
         const auto pid = static_cast<PoolId>(opPoolDist(gen));
-        const Request& req(getReq(pid, gen, lastRequestId));
+        const Request& req(getReq(pid, gen, lastRequestId, i, thread_num));
         OpType op = req.getOp();
         const std::string* key = &(req.key);
         std::string oneHitKey;
@@ -391,6 +395,9 @@ class CacheStressor : public Stressor {
               // appropriate here)
               slock = {};
               xlock = chainedItemAcquireUniqueLock(*key);
+              //if (thread_num == 0) {
+              //  std::cout << "[DEBUG] Inserting key: " << *key << std::endl; 
+              //}
               setKey(pid, stats, key, *(req.sizeBegin), req.ttlSecs,
                      req.admFeatureMap);
             }
@@ -506,10 +513,6 @@ class CacheStressor : public Stressor {
     tmpVals[thread_num] = sp;
   }
 
-  //folly::StringPiece sp{reinterpret_cast<const char*>(item->getMemory()),
-  //                        item->getSize()};
-  //  std::ignore = sp;
-
   // inserts key into the cache if the admission policy also indicates the
   // key is worthy to be cached.
   //
@@ -558,7 +561,72 @@ class CacheStressor : public Stressor {
 
   const Request& getReq(const PoolId& pid,
                         std::mt19937_64& gen,
-                        std::optional<uint64_t>& lastRequestId) {
+                        std::optional<uint64_t>& lastRequestId,
+                        uint64_t reqNum = 0,
+                        int thread_num = -1) {
+    /*
+    std::vector<std::string> hotKeyStrings;
+    // move_pages() data structures
+    uint64_t** migrate_pages = new uint64_t*[1];
+    int migrate_nodes[1] = {0};
+    int migrate_status[1] = {99};
+    long manual_pages_migrated = 0;
+    uint64_t item_low_addr = 0;
+    uint64_t item_high_addr = 0;
+    uint64_t item_start_page = 0;
+    uint64_t item_end_page = 0;
+
+    if (reqNum % 500000 == 0 && thread_num == 0) {
+      std::cout << std::dec << "[DEBUG] request num = " << reqNum << std::endl;
+    }
+    //if (reqNum == 1000000000 && thread_num == 0) { // only thread 0 performs this
+    //if (reqNum == 20000000 && thread_num == 0) { // only thread 0 performs this
+    if (reqNum == 10000000 && thread_num == 0) { // only thread 0 performs this
+      std::cout << "[DEBUG]: hot item print start." << std::endl;
+      std::ofstream hotKeysFile;
+      hotKeysFile.open ("hotKeys.txt");
+      // using poolid to indicate I wish to print the hot items. We only use one pool anyways
+      OnlineGenerator *derivedPointer = dynamic_cast<OnlineGenerator*>(wg_.get());
+      derivedPointer->getHotKeys(hotKeyStrings); 
+      // req_tmp is dummy return.
+      // hotKeyStrings contains key strings of top N hottest items.
+      for(std::string keyString : hotKeyStrings) { 
+        if (manual_pages_migrated % 200000 == 0) {
+          std::cout << "[DEBUG] manual pages migrated = " << manual_pages_migrated << std::endl;
+        }
+        auto it = cache_->find(keyString); // item handle
+        if (it != nullptr) { // if hot key is in cache
+          hotKeysFile << std::hex << reinterpret_cast<uint64_t>(it->getMemory()) << " "
+                    << reinterpret_cast<uint64_t>(reinterpret_cast<const char *>(it->getMemory())+it->getSize()) << std::endl;
+
+          // Manual placement: migrate hot item pages to node 0. 
+          // Move pages one by one to node 0.
+          item_low_addr = reinterpret_cast<uint64_t>(it->getMemory());
+          item_high_addr = reinterpret_cast<uint64_t>(reinterpret_cast<const char *>(it->getMemory())+it->getSize());
+          item_start_page = item_low_addr & ~(0xFFF);
+          item_end_page = item_high_addr & ~(0xFFF);
+          
+          //std::cout << std::hex <<  "[DEBUG]: start page " << item_start_page << ", " << item_end_page << std::endl;
+          for (uint64_t page_addr = item_start_page; page_addr <= item_end_page; page_addr += 0x1000) {
+            // for all pages that the item spans
+            migrate_pages[0] = (uint64_t*)(page_addr);
+            if (numa_move_pages(0, 1, (void **)migrate_pages, migrate_nodes, migrate_status, MPOL_MF_MOVE_ALL)) {
+              // non-zero return
+              //std::cout << "WARNING: migrating page " << migrate_pages[0] << " failed with " << strerror(errno) << std::endl;
+            } else {
+              manual_pages_migrated++;
+            }
+          }
+        } else {
+          //std::cout << "[DEBUG]: hot item hot found in cache. " << keyString << std::endl;
+        }
+      }
+      std::cout << "[DEBUG]: hot item print done." << std::endl;
+      std::cout << "[DEBUG]: number of pages migrated = " << manual_pages_migrated << std::endl;
+
+    }
+    */
+
     while (true) {
       const Request& req(wg_->getReq(pid, gen, lastRequestId));
       if (config_.checkConsistency && cache_->isInvalidKey(req.key)) {

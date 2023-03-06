@@ -46,6 +46,8 @@ class OnlineGenerator : public GeneratorBase {
       std::mt19937_64& gen,
       std::optional<uint64_t> lastRequestId = std::nullopt) override;
 
+  void getHotKeys(std::vector<std::string> &hotKeyStrings);
+
   const std::vector<std::string>& getAllKeys() const {
     throw std::logic_error("OnlineGenerator has no keys precomputed!");
   }
