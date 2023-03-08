@@ -53,17 +53,18 @@ OnlineGenerator::OnlineGenerator(const StressorConfig& config)
 
 void OnlineGenerator::getHotKeys(std::vector<std::string> &hotKeyStrings) {
   // stop the world: print the starting and ending addresses of the top N hottest items.
-  uint64_t mean = 20000000;
-  uint64_t stddev = 500000;
+  uint64_t mean = 7250000;
+  //uint64_t stddev = 500000;
   //uint64_t mean = 1000000;
   //uint64_t stddev = 25000;
-  std::cout << "[DEBUG]:     mean: " << mean << " stddev: " << stddev << std::endl;
+  //std::cout << "[DEBUG]:     mean: " << mean << " stddev: " << stddev << std::endl;
+  std::cout << "[DEBUG] online generator mean: " << mean << std::endl;
 
   std::string keyString;
   // top 2*stddev hottest items have key indices between (mean - stddev) and (mean + stddev).
   //for (uint64_t hotKeyIdx = mean-stddev; hotKeyIdx <= mean+stddev; hotKeyIdx++) {
   //for (uint64_t hotKeyIdx = mean-25000; hotKeyIdx <= mean+25000; hotKeyIdx++) {
-  for (uint64_t hotKeyIdx = mean-800000; hotKeyIdx <= mean+800000; hotKeyIdx++) {
+  for (uint64_t hotKeyIdx = mean-900000; hotKeyIdx <= mean+900000; hotKeyIdx++) {
     generateKey(0, hotKeyIdx, keyString);
     hotKeyStrings.push_back(keyString);
     //std::cout << "[DEBUG]: key string: " << keyString << std::endl;

@@ -40,6 +40,8 @@
 //#define NUM_ENTRIES 86000000/16
 #define NUM_ENTRIES 540000000/16
 
+#define PAGE_SIZE 4096
+
 int fd[NPROC][NPBUFTYPES];
 static struct perf_event_mmap_page *perf_page[NPROC][NPBUFTYPES];
 
@@ -131,7 +133,9 @@ void* perf_func(void*) {
     // setup TinyLFU
     uint32_t hot_thresh = 6;
     frequency_sketch<uint64_t> lfu(NUM_ENTRIES);
-    uint64_t max_page_migrate = 7800000;
+    uint64_t max_page_migrate = 524000; // ~2GB
+    //uint64_t max_page_migrate = 1200000; // ~5GB
+    //uint64_t max_page_migrate = 7500000; // ~30GB
     //std::set<uint64_t> hot_pages;
     std::cout << "==== TinyLFU debug info" <<  std::endl;
     std::cout << std::dec << "hot threshold = " << hot_thresh << std::endl;
@@ -148,9 +152,14 @@ void* perf_func(void*) {
 
 
     // NUMA migration vars
-    int** migrate_pages = new int*[1];  // array of pointer, with only 1 element
-    int migrate_nodes[1] = {0}; // migrate to node 0
-    int migrate_status[1] = {99};
+    //int** migrate_pages = new int*[1];  // array of pointer, with only 1 element
+    //int migrate_nodes[1] = {0}; // migrate to node 0
+    //int migrate_status[1] = {99};
+
+    // Test: migrate 16 consecutive pages
+    int** migrate_pages = new int*[16];  // array of pointer, with only 1 element
+    int migrate_nodes[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // migrate to node 0
+    int migrate_status[16] = {99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99};
     long pages_migrated = 0;
     long pages_already_in_node0 = 0;
     int move_page_ret;
@@ -200,23 +209,44 @@ void* perf_func(void*) {
                   page_addr = ps->addr & ~(0xFFF); // get virtual page address from address
                   lfu.record_access(page_addr);
                   if (lfu.frequency(page_addr) >= hot_thresh) {
-                    migrate_pages[0] = (int*)page_addr;
+                    // migrate 7 consecutive pages following the detected hot page
+                    migrate_pages[0]  = (int*)page_addr;
+                    migrate_pages[1]  = (int*)(page_addr+1*PAGE_SIZE);
+                    migrate_pages[2]  = (int*)(page_addr+2*PAGE_SIZE);
+                    migrate_pages[3]  = (int*)(page_addr+3*PAGE_SIZE);
+                    migrate_pages[4]  = (int*)(page_addr+4*PAGE_SIZE);
+                    migrate_pages[5]  = (int*)(page_addr+5*PAGE_SIZE);
+                    migrate_pages[6]  = (int*)(page_addr+6*PAGE_SIZE);
+                    migrate_pages[7]  = (int*)(page_addr+7*PAGE_SIZE);
+                    migrate_pages[8]  = (int*)(page_addr+8*PAGE_SIZE);
+                    migrate_pages[9]  = (int*)(page_addr+9*PAGE_SIZE);
+                    migrate_pages[10] = (int*)(page_addr+10*PAGE_SIZE);
+                    migrate_pages[11] = (int*)(page_addr+11*PAGE_SIZE);
+                    migrate_pages[12] = (int*)(page_addr+12*PAGE_SIZE);
+                    migrate_pages[13] = (int*)(page_addr+13*PAGE_SIZE);
+                    migrate_pages[14] = (int*)(page_addr+14*PAGE_SIZE);
+                    migrate_pages[15] = (int*)(page_addr+15*PAGE_SIZE);
+
                     // first check if this page is already in node 0.
                     //std::cout << "66:  " << page_addr << std::endl;
                     numa_move_pages(0, 1, (void **)migrate_pages, NULL, migrate_status, MPOL_MF_MOVE_ALL);
                     if (migrate_status[0] == 0){
+                    //if (migrate_status[0] == 0 && migrate_status[3] == 0 && migrate_status[7] == 0){
                       // page is already in node 0
                       pages_already_in_node0++;
                     } else {
                       // promote hot page to fast tier memory
+                      //ove_page_ret = numa_move_pages(0, 15, (void **)migrate_pages, migrate_nodes, migrate_status, MPOL_MF_MOVE_ALL);
                       move_page_ret = numa_move_pages(0, 1, (void **)migrate_pages, migrate_nodes, migrate_status, MPOL_MF_MOVE_ALL);
                       if (move_page_ret) { 
                         // a non zero value is returned.
-                        std::cout << "WARNING: migrating page " << migrate_pages[0] << " failed with " << strerror(errno) << std::endl;
+                        //std::cout << "WARNING: migrating page " << migrate_pages[0] << " failed with " << strerror(errno) << std::endl;
+                      //} else if (migrate_status[0] < 0 || migrate_status[7] < 0 || migrate_status[15] < 0) {
                       } else if (migrate_status[0] < 0) {
-                        std::cout << "migration status is -ve:  " << strerror(-1*migrate_status[0]) << std::hex << ". addr " <<  migrate_pages[0] << std::endl;
+                        //std::cout << "migration status is -ve:  " << strerror(-1*migrate_status[0]) << std::hex << ". addr " <<  migrate_pages[0] << std::endl;
                       } else {
                         pages_migrated++;
+                        //pages_migrated = pages_migrated + 8;
                       }
                     }
                   }

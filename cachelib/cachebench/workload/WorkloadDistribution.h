@@ -100,9 +100,10 @@ class WorkloadDistribution {
       // not sure why stddev is hardcoded to right/4. In general this stddev seems to be too high
       // for caching workloads. 
       //double sigma = (right - left) * .5 / 2;
-      double sigma = 500000; // 500k for 40M keys to emulate zipf alpha = 0.9.
-      //double sigma = 25000; // 25k for 2M keys to emulate zipf alpha = 0.9.
-      //double sigma = 5500000; // 5.5M for 40M keys to emulate zipf alpha = 0.7.
+      //double sigma = 500000; // 500k for 40M keys to emulate zipf alpha = 0.9
+      //double sigma = 25000; // 25k for 2M keys to emulate zipf alpha = 0.9
+      //double sigma = 5500000; // 5.5M for 40M keys to emulate zipf alpha = 0.7
+      double sigma = 2000000; 
       std::cout << std::dec << "[DEBUG] Using normal popularity distribution." << std::endl;
       std::cout << "[DEBUG] Normal dist left = " << left << std::endl;
       std::cout << "[DEBUG] Normal dist right = " << right << std::endl;

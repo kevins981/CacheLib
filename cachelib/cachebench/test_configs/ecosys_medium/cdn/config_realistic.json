@@ -22,8 +22,8 @@
         0.7
       ], 
       "loneGetRatio": 0.008844707140632665, 
-      "numKeys": 40000000, 
-      "numOps": 8000000000, 
+      "numKeys": 14500000, 
+      "numOps": 240000000, 
       "numThreads": 15, 
        
       "setRatio": 0.0, 

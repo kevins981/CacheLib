@@ -47,7 +47,7 @@ uint64_t numHashTableCollision = 0;
 namespace cachebench {
 
 constexpr uint32_t kNvmCacheWarmUpCheckRate = 1000;
-std::string tmpVals[64]; // used for reading out cache hit results
+//std::string tmpVals[64]; // used for reading out cache hit results
 
 //folly::StringPiece tmpVals[64]; // used for reading out cache hit results
 
@@ -105,6 +105,10 @@ class CacheStressor : public Stressor {
             wg->renderWindowStats(elapsedSecs, std::cout);
           });
       cacheConfig.ticker = ticker_;
+    }
+
+    if (config_.touchValue == true) {
+      std::cout << "[DEBUG] Touch value enabled." << std::endl;
     }
 
     cache_ = std::make_unique<CacheT>(cacheConfig, movingSync,
@@ -285,6 +289,8 @@ class CacheStressor : public Stressor {
     float currHitRatio = 100;
     float prevHitRatio = -100;
     uint64_t newMisses, newGets;
+
+    //std::string tmpVal; // used for reading out cache hit results
     //if (thread_num == 0){
     //    std::cout << "[INFO: VTUNE] Vtune analysis will start after the first 1/8 of operations are completed and \
     //        will be paused before the last 1/8 of ops." << std::endl;
@@ -407,8 +413,10 @@ class CacheStressor : public Stressor {
             // accessed from memory. Otherwise only the pointer to the item is accessed.
             //std::memcpy(tmpVal, it->getMemory(), it->getSize());
             //std::memcpy(&tmpVal[0], it->getMemory(), it->getSize());
+            //readValue(it, tmpVal);
             //readValue(tmpVal, it);
-            readValue(it, thread_num);
+            //readValue(it, thread_num);
+            //tmpVal.assign(reinterpret_cast<const char*>(it->getMemory()), it->getSize());
           }
 
           break;
@@ -500,18 +508,17 @@ class CacheStressor : public Stressor {
     // reading tmp value here so hopefully the compiler does not optimize it out
     //std::cout << folly::sformat("[DEBUG] Last read value is {}", tmpVal) << std::endl;
     //std::cout << "[DEBUG] Last read value is " <<  tmpVal.substr(0, 100) << std::endl; // printing the first 100 chars
-    std::cout << "[DEBUG] Last read value is " <<  tmpVals[thread_num].substr(0, 100) << std::endl; // printing the first 100 chars
+    //std::cout << "[DEBUG] Last read value is " <<  tmpVals[thread_num].substr(0, 100) << std::endl; // printing the first 100 chars
+    //std::cout << "[DEBUG] Last read value is " <<  tmpVal.substr(0, 100) << std::endl; // printing the first 100 chars
   }
 
-  void readValue(ReadHandle &it, int thread_num) {
+  //void readValue(ReadHandle &it, std::string &tmpVal) {
     //std::memcpy(&tmpVal[0], it->getMemory(), it->getSize());
-    //XCHECK_LE(thread_num, 63);
-    //XCHECK_GE(thread_num, 0);
     //folly::StringPiece sp{reinterpret_cast<const char*>(it->getMemory()), it->getSize()};
-    std::string sp (reinterpret_cast<const char*>(it->getMemory()), it->getSize());
+    //std::string sp (reinterpret_cast<const char*>(it->getMemory()), it->getSize());
     //std::cout << "[DEBUG] Value size is " << it->getSize()  << std::endl; // printing the first 100 chars
-    tmpVals[thread_num] = sp;
-  }
+    //tmpVals[thread_num] = sp;
+  //}
 
   // inserts key into the cache if the admission policy also indicates the
   // key is worthy to be cached.
@@ -564,27 +571,28 @@ class CacheStressor : public Stressor {
                         std::optional<uint64_t>& lastRequestId,
                         uint64_t reqNum = 0,
                         int thread_num = -1) {
-    /*
-    std::vector<std::string> hotKeyStrings;
-    // move_pages() data structures
-    uint64_t** migrate_pages = new uint64_t*[1];
-    int migrate_nodes[1] = {0};
-    int migrate_status[1] = {99};
-    long manual_pages_migrated = 0;
-    uint64_t item_low_addr = 0;
-    uint64_t item_high_addr = 0;
-    uint64_t item_start_page = 0;
-    uint64_t item_end_page = 0;
-
+/*
     if (reqNum % 500000 == 0 && thread_num == 0) {
       std::cout << std::dec << "[DEBUG] request num = " << reqNum << std::endl;
     }
+
+    // manually promote the top N hottest items
     //if (reqNum == 1000000000 && thread_num == 0) { // only thread 0 performs this
     //if (reqNum == 20000000 && thread_num == 0) { // only thread 0 performs this
     if (reqNum == 10000000 && thread_num == 0) { // only thread 0 performs this
+      std::vector<std::string> hotKeyStrings;
+      // move_pages() data structures
+      uint64_t** migrate_pages = new uint64_t*[1];
+      int migrate_nodes[1] = {0};
+      int migrate_status[1] = {99};
+      long manual_pages_migrated = 0;
+      uint64_t item_low_addr = 0;
+      uint64_t item_high_addr = 0;
+      uint64_t item_start_page = 0;
+      uint64_t item_end_page = 0;
       std::cout << "[DEBUG]: hot item print start." << std::endl;
-      std::ofstream hotKeysFile;
-      hotKeysFile.open ("hotKeys.txt");
+      //std::ofstream hotKeysFile;
+      //hotKeysFile.open ("hotKeys.txt");
       // using poolid to indicate I wish to print the hot items. We only use one pool anyways
       OnlineGenerator *derivedPointer = dynamic_cast<OnlineGenerator*>(wg_.get());
       derivedPointer->getHotKeys(hotKeyStrings); 
@@ -596,8 +604,8 @@ class CacheStressor : public Stressor {
         }
         auto it = cache_->find(keyString); // item handle
         if (it != nullptr) { // if hot key is in cache
-          hotKeysFile << std::hex << reinterpret_cast<uint64_t>(it->getMemory()) << " "
-                    << reinterpret_cast<uint64_t>(reinterpret_cast<const char *>(it->getMemory())+it->getSize()) << std::endl;
+          //hotKeysFile << std::hex << reinterpret_cast<uint64_t>(it->getMemory()) << " "
+                    //<< reinterpret_cast<uint64_t>(reinterpret_cast<const char *>(it->getMemory())+it->getSize()) << std::endl;
 
           // Manual placement: migrate hot item pages to node 0. 
           // Move pages one by one to node 0.
@@ -621,12 +629,12 @@ class CacheStressor : public Stressor {
           //std::cout << "[DEBUG]: hot item hot found in cache. " << keyString << std::endl;
         }
       }
+      delete[] migrate_pages;
       std::cout << "[DEBUG]: hot item print done." << std::endl;
       std::cout << "[DEBUG]: number of pages migrated = " << manual_pages_migrated << std::endl;
 
     }
-    */
-
+*/
     while (true) {
       const Request& req(wg_->getReq(pid, gen, lastRequestId));
       if (config_.checkConsistency && cache_->isInvalidKey(req.key)) {
