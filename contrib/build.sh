@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -81,6 +81,12 @@ build_fedora_34()
     || die "failed to install packages for Fedora"
 }
 
+build_arch()
+{
+  ./contrib//prerequisites-arch.sh \
+    || die "failed to install packages for ArchLinux"
+}
+
 build_dependencies()
 {
   for pkg in zstd googleflags googlelog googletest sparsemap fmt folly fizz wangle fbthrift ;
@@ -125,7 +131,7 @@ skip_os_pkgs=
 skip_build=
 show_help=
 build_cachelib_tests=
-while getopts BdhjOStvT param
+while getopts BdhjOStvTp: param
 do
   case $param in
   h)  show_help=yes ;;
@@ -133,6 +139,7 @@ do
   B)  skip_build=yes ;;
   d|j|S|t|v) pass_params="$pass_params -$param" ;;
   T)  build_cachelib_tests=yes ;;
+  p)  pass_params="$pass_params -$param $OPTARG" ;;
   ?)      die "unknown option. See -h for help."
   esac
 done
@@ -154,6 +161,7 @@ if test -z "$skip_os_pkgs" ; then
     centos8|rocky8.?) build_centos_8 ;;
     rocky9.?) build_rocky_9 ;;
     fedora3[456]) build_fedora_34 ;;
+    arch*|manjaro*) build_arch ;;
     *) die "No build recipe for detected operating system '$DETECTED'" ;;
   esac
 fi

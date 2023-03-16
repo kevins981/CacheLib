@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -400,6 +400,7 @@ uint64_t nandWriteBytes(const folly::StringPiece& deviceName,
                             const folly::StringPiece&)>>
       vendorMap{{"samsung", samsungWriteBytes},
                 {"mz1lb960hbjr-", samsungWriteBytes},
+                {"mzol23t8hcls-", samsungWriteBytes},
                 // The Samsung PM983a doesn't include Samsung in the model
                 // number at this time, but it's a Samsung device.
                 {"liteon", liteonWriteBytes},

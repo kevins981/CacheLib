@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,18 +112,17 @@ class RocksCachelibWrapper : public rocksdb::SecondaryCache {
 
   std::unique_ptr<rocksdb::SecondaryCacheResultHandle> Lookup(
       const rocksdb::Slice& key,
+#if ROCKSDB_MAJOR > 7 || (ROCKSDB_MAJOR == 7 && ROCKSDB_MINOR >= 10)
+      const rocksdb::Cache::CacheItemHelper* helper,
+      rocksdb::Cache::CreateContext* create_context,
+#else
       const rocksdb::Cache::CreateCallback& create_cb,
-      bool wait
-#if ROCKSDB_MAJOR > 7 || (ROCKSDB_MAJOR == 7 && ROCKSDB_MINOR >= 7)
-      ,
-      bool /*advise_erase*/
 #endif
-      ,
+      bool wait,
+      bool advise_erase,
       bool& is_in_sec_cache) override;
 
-#if ROCKSDB_MAJOR > 7 || (ROCKSDB_MAJOR == 7 && ROCKSDB_MINOR >= 7)
   bool SupportForceErase() const override { return false; }
-#endif
 
   void Erase(const rocksdb::Slice& key) override;
 

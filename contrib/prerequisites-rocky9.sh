@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,8 @@ sudo dnf install -y \
   jemalloc-devel \
   libsodium-devel \
   libaio-devel \
-  binutils-devel
+  binutils-devel \
+  numactl-devel
 
 
 sudo dnf install -y \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ class SimpleRebalanceTest : public testing::Test {
     config.setCacheSize(10 * Slab::kSize);
 
     AllocatorT alloc(config);
-    const size_t numBytes = alloc.getCacheMemoryStats().cacheSize;
+    const size_t numBytes = alloc.getCacheMemoryStats().ramCacheSize;
     auto poolId = alloc.addPool("foobar", numBytes);
 
     std::vector<typename AllocatorT::WriteHandle> handles;
@@ -130,7 +130,7 @@ class SimpleRebalanceTest : public testing::Test {
     config.setCacheSize(20 * Slab::kSize);
 
     AllocatorT alloc(config);
-    const size_t numBytes = alloc.getCacheMemoryStats().cacheSize;
+    const size_t numBytes = alloc.getCacheMemoryStats().ramCacheSize;
     const unsigned int numPools = 5;
     std::vector<PoolId> pidList;
     for (unsigned int i = 0; i < numPools; ++i) {

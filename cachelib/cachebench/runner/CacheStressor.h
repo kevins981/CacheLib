@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 #include <folly/Random.h>
 #include <folly/TokenBucket.h>
+#include <folly/system/ThreadName.h>
 
 #include <atomic>
 #include <cstddef>
@@ -102,7 +103,8 @@ class CacheStressor : public Stressor {
           });
       cacheConfig.ticker = ticker_;
     }
-
+    cacheConfig.nvmWriteBytesCallback =
+        std::bind(&CacheStressor<Allocator>::getNvmBytesWritten, this);
     cache_ = std::make_unique<CacheT>(cacheConfig, movingSync,
                                       cacheConfig.cacheDir, config_.touchValue);
     if (config_.opPoolDistribution.size() > cache_->numPools()) {
@@ -122,8 +124,11 @@ class CacheStressor : public Stressor {
       cache_->enableConsistencyCheck(wg_->getAllKeys());
     }
     if (config_.opRatePerSec > 0) {
+      // opRateBurstSize is default to opRatePerSec if not specified
       rateLimiter_ = std::make_unique<folly::BasicTokenBucket<>>(
-          config_.opRatePerSec, config_.opRatePerSec);
+          config_.opRatePerSec, config_.opRateBurstSize > 0
+                                    ? config_.opRateBurstSize
+                                    : config_.opRatePerSec);
     }
   }
 
@@ -142,9 +147,12 @@ class CacheStressor : public Stressor {
 
     stressWorker_ = std::thread([this] {
       std::vector<std::thread> workers;
+
       for (uint64_t i = 0; i < config_.numThreads; ++i) {
         workers.push_back(
-            std::thread([this, throughputStats = &throughputStats_.at(i), thread_num = i]() {
+            std::thread([this, throughputStats = &throughputStats_.at(i), thread_num = i,
+                         threadName = folly::sformat("cb_stressor_{}", i)]() {
+              folly::setThreadName(threadName);
               stressByDiscreteDistribution(*throughputStats, thread_num);
             }));
       }
@@ -156,6 +164,17 @@ class CacheStressor : public Stressor {
         endTime_ = std::chrono::system_clock::now();
       }
     });
+  }
+
+  double getNvmBytesWritten() {
+    double bytesWritten = 0;
+    if (cache_) {
+      bytesWritten = cache_->getNvmBytesWritten();
+      XLOG_EVERY_MS(INFO, 60000) << "NVM bytes written: " << bytesWritten;
+    } else {
+      XLOG_EVERY_MS(INFO, 60000) << "Error, allocator not set";
+    }
+    return bytesWritten;
   }
 
   // Block until all stress workers are finished.
@@ -231,7 +250,7 @@ class CacheStressor : public Stressor {
   }
 
   // populate the input item handle according to the stress setup.
-  void populateItem(WriteHandle& handle) {
+  void populateItem(WriteHandle& handle, const std::string& itemValue = "") {
     if (!config_.populateItem) {
       return;
     }
@@ -239,6 +258,10 @@ class CacheStressor : public Stressor {
     XDCHECK_LE(cache_->getSize(handle), 4ULL * 1024 * 1024);
     if (cache_->consistencyCheckEnabled()) {
       cache_->setUint64ToItem(handle, folly::Random::rand64(rng));
+    }
+
+    if (!itemValue.empty()) {
+      cache_->setStringItem(handle, itemValue);
     } else {
       cache_->setStringItem(handle, hardcodedString_);
     }
@@ -362,7 +385,7 @@ class CacheStressor : public Stressor {
           }
           auto lock = chainedItemAcquireUniqueLock(*key);
           result = setKey(pid, stats, key, *(req.sizeBegin), req.ttlSecs,
-                          req.admFeatureMap);
+                          req.admFeatureMap, req.itemValue);
 
           break;
         }
@@ -392,7 +415,7 @@ class CacheStressor : public Stressor {
               slock = {};
               xlock = chainedItemAcquireUniqueLock(*key);
               setKey(pid, stats, key, *(req.sizeBegin), req.ttlSecs,
-                     req.admFeatureMap);
+                     req.admFeatureMap, req.itemValue);
             }
           } else {
             result = OpResultType::kGetHit;
@@ -525,7 +548,8 @@ class CacheStressor : public Stressor {
       const std::string* key,
       size_t size,
       uint32_t ttlSecs,
-      const std::unordered_map<std::string, std::string>& featureMap) {
+      const std::unordered_map<std::string, std::string>& featureMap,
+      const std::string& itemValue) {
     // check the admission policy first, and skip the set operation
     // if the policy returns false
     if (config_.admPolicy && !config_.admPolicy->accept(featureMap)) {
@@ -538,7 +562,7 @@ class CacheStressor : public Stressor {
       ++stats.setFailure;
       return OpResultType::kSetFailure;
     } else {
-      populateItem(it);
+      populateItem(it, itemValue);
       cache_->insertOrReplace(it);
       return OpResultType::kSetSuccess;
     }
@@ -564,7 +588,8 @@ class CacheStressor : public Stressor {
       if (config_.checkConsistency && cache_->isInvalidKey(req.key)) {
         continue;
       }
-      // TODO: allow callback on nvm eviction instead of checking it repeatedly.
+      // TODO: allow callback on nvm eviction instead of checking it
+      // repeatedly.
       if (config_.checkNvmCacheWarmUp &&
           folly::Random::oneIn(kNvmCacheWarmUpCheckRate)) {
         checkNvmCacheWarmedUp(req.timestamp);

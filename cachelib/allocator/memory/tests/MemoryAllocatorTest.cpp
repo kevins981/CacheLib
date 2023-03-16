@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -652,7 +652,7 @@ TEST_F(MemoryAllocatorTest, ReleaseSlabToReceiver) {
   ASSERT_NE(nullptr, m.allocate(pid, size2));
 
   // allocate until it's filled up again
-  for (int i = 0;; ++i) {
+  while (true) {
     void* alloc = m.allocate(pid, size2);
     if (alloc) {
       allocations2.push_back(alloc);

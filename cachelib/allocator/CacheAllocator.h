@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -223,12 +223,19 @@ class CacheAllocator : public CacheBase {
   // internal resource (e.g., ref counts, buffer) will be managed by the iobuf
   class SampleItem {
    public:
-    SampleItem() = default;
+    explicit SampleItem(bool fromNvm) : fromNvm_{fromNvm} {}
+
+    SampleItem(folly::IOBuf&& iobuf, const AllocInfo& allocInfo, bool fromNvm)
+        : iobuf_{std::move(iobuf)}, allocInfo_{allocInfo}, fromNvm_{fromNvm} {}
 
     SampleItem(folly::IOBuf&& iobuf,
-               const AllocInfo& allocInfo,
-               bool fromNvm = false)
-        : iobuf_(std::move(iobuf)), allocInfo_(allocInfo), fromNvm_(fromNvm) {}
+               PoolId poolId,
+               ClassId classId,
+               size_t allocSize,
+               bool fromNvm)
+        : SampleItem(std::move(iobuf),
+                     AllocInfo{poolId, classId, allocSize},
+                     fromNvm) {}
 
     const Item* operator->() const noexcept { return get(); }
 
@@ -1169,8 +1176,7 @@ class CacheAllocator : public CacheBase {
   CacheMemoryStats getCacheMemoryStats() const override final;
 
   // return the nvm cache stats map
-  std::unordered_map<std::string, double> getNvmCacheStatsMap()
-      const override final;
+  util::StatsMap getNvmCacheStatsMap() const override final;
 
   // return the event tracker stats map
   std::unordered_map<std::string, uint64_t> getEventTrackerStatsMap()
@@ -1302,7 +1308,7 @@ class CacheAllocator : public CacheBase {
 
  private:
   // wrapper around Item's refcount and active handle tracking
-  FOLLY_ALWAYS_INLINE void incRef(Item& it);
+  FOLLY_ALWAYS_INLINE bool incRef(Item& it);
   FOLLY_ALWAYS_INLINE RefcountWithFlags::Value decRef(Item& it);
 
   // drops the refcount and if needed, frees the allocation back to the memory
@@ -1385,11 +1391,6 @@ class CacheAllocator : public CacheBase {
   MMContainer& getMMContainer(const Item& item) const noexcept;
 
   MMContainer& getMMContainer(PoolId pid, ClassId cid) const noexcept;
-
-  // Get stats of the specified pid and cid.
-  // If such mmcontainer is not valid (pool id or cid out of bound)
-  // or the mmcontainer is not initialized, return an empty stat.
-  MMContainerStat getMMContainerStat(PoolId pid, ClassId cid) const noexcept;
 
   // create a new cache allocation. The allocation can be initialized
   // appropriately and made accessible through insert or insertOrReplace.
@@ -1507,7 +1508,7 @@ class CacheAllocator : public CacheBase {
   FOLLY_ALWAYS_INLINE WriteHandle findFastImpl(Key key, AccessMode mode);
 
   // Moves a regular item to a different slab. This should only be used during
-  // slab release after the item's moving bit has been set. The user supplied
+  // slab release after the item's exclusive bit has been set. The user supplied
   // callback is responsible for copying the contents and fixing the semantics
   // of chained item.
   //
@@ -1530,7 +1531,7 @@ class CacheAllocator : public CacheBase {
   folly::IOBuf convertToIOBufT(Handle& handle);
 
   // Moves a chained item to a different slab. This should only be used during
-  // slab release after the item's moving bit has been set. The user supplied
+  // slab release after the item's exclusive bit has been set. The user supplied
   // callback is responsible for copying the contents and fixing the semantics
   // of chained item.
   //
@@ -1659,7 +1660,7 @@ class CacheAllocator : public CacheBase {
   // @return An evicted item or nullptr  if there is no suitable candidate.
   Item* findEviction(PoolId pid, ClassId cid);
 
-  using EvictionIterator = typename MMContainer::Iterator;
+  using EvictionIterator = typename MMContainer::LockedIterator;
 
   // Advance the current iterator and try to evict a regular item
   //
@@ -1824,7 +1825,7 @@ class CacheAllocator : public CacheBase {
     // detection.
     folly::annotate_ignore_thread_sanitizer_guard g(__FILE__, __LINE__);
     auto slabsSkipped = allocator_->forEachAllocation(std::forward<Fn>(f));
-    stats().numSkippedSlabReleases.add(slabsSkipped);
+    stats().numReaperSkippedSlabs.add(slabsSkipped);
   }
 
   // returns true if nvmcache is enabled and we should write this item to
@@ -1867,6 +1868,7 @@ class CacheAllocator : public CacheBase {
                   std::unique_ptr<T>& worker,
                   std::chrono::seconds timeout = std::chrono::seconds{0});
 
+  ShmSegmentOpts createShmCacheOpts();
   std::unique_ptr<MemoryAllocator> createNewMemoryAllocator();
   std::unique_ptr<MemoryAllocator> restoreMemoryAllocator();
   std::unique_ptr<CCacheManager> restoreCCacheManager();
@@ -1926,12 +1928,8 @@ class CacheAllocator : public CacheBase {
   std::optional<bool> saveNvmCache();
   void saveRamCache();
 
-  static bool itemMovingPredicate(const Item& item) {
+  static bool itemExclusivePredicate(const Item& item) {
     return item.getRefCount() == 0;
-  }
-
-  static bool itemEvictionPredicate(const Item& item) {
-    return item.getRefCount() == 0 && !item.isMoving();
   }
 
   static bool itemExpiryPredicate(const Item& item) {
@@ -1986,7 +1984,7 @@ class CacheAllocator : public CacheBase {
   // on heap.
   const bool isOnShm_{false};
 
-  const Config config_{};
+  Config config_{};
 
   // Manages the temporary shared memory segment for memory allocator that
   // is not persisted when cache process exits.

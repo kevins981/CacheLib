@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ struct Stats {
 
   uint64_t numCacheGets{0};
   uint64_t numCacheGetMiss{0};
+  uint64_t numCacheEvictions{0};
   uint64_t numRamDestructorCalls{0};
   uint64_t numNvmGets{0};
   uint64_t numNvmGetMiss{0};
@@ -86,7 +87,7 @@ struct Stats {
 
   uint64_t slabsReleased{0};
   uint64_t numAbortedSlabReleases{0};
-  uint64_t numSkippedSlabReleases{0};
+  uint64_t numReaperSkippedSlabs{0};
   uint64_t moveAttemptsForSlabRelease{0};
   uint64_t moveSuccessesForSlabRelease{0};
   uint64_t evictionAttemptsForSlabRelease{0};
@@ -312,6 +313,11 @@ struct Stats {
     if (numRamDestructorCalls > 0 || numNvmDestructorCalls > 0) {
       out << folly::sformat("Destructor executed from RAM {}, from NVM {}",
                             numRamDestructorCalls, numNvmDestructorCalls)
+          << std::endl;
+    }
+
+    if (numCacheEvictions > 0) {
+      out << folly::sformat("Total eviction executed {}", numCacheEvictions)
           << std::endl;
     }
   }
